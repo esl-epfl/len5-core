@@ -9,7 +9,7 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: issue_decoder.sv
-// Author: Michele Caon
+// Author: Michele Caon, Flavia Guella
 // Date: 13/11/2019
 
 module issue_decoder (
@@ -27,12 +27,10 @@ module issue_decoder (
   output expipe_pkg::eu_ctl_t eu_ctl_o,  // controls for the assigned EU
   output logic mem_crit_o,  // memory accesses shall wait for this instruction to complete
   output logic order_crit_o,  // out-of-order commit not allowed
-  output logic rs1_req_o,  // rs1 fetch is required
-  output logic rs1_is_pc_o,  // rs1 is the current PC (for AUIPC)
-  output logic rs2_req_o,  // rs2 fetch is required
-  output logic rs2_is_imm_o,  // replace rs2 value with imm. (for i-type ALU instr.)
+  output expipe_pkg::rs1_sel_t rs1_sel_o,  // rs1 source
+  output expipe_pkg::rs2_sel_t rs2_sel_o,  // rs2 source
+  output expipe_pkg::rs3_sel_t rs3_sel_o,  // rs3 source
   output logic rd_upd_o,  // the instruction updates a destination register rd
-  //   output logic         rs3_req_o,      // rs3 (S, D only) fetch is required
   output expipe_pkg::imm_format_t imm_format_o  // immediate format
 );
 
@@ -57,12 +55,10 @@ module issue_decoder (
   eu_ctl_t      eu_ctl;
   logic         mem_crit;  // stores must wait for these instruction completion
   logic         order_crit;  // out-of-order commit not allowed
-  logic         rs1_req;
-  logic         rs1_is_pc;  // for AUIPC
-  logic         rs2_req;
-  logic         rs2_is_imm;  // for i-type ALU instr
+  rs1_sel_t     rs1_sel;
+  rs2_sel_t     rs2_sel;
+  rs3_sel_t     rs3_sel;
   logic         rd_upd;
-  //   logic rs3_req;
   imm_format_t  imm_format;
   logic         skip_eu;
   logic         opcode_except;
@@ -84,12 +80,10 @@ module issue_decoder (
     eu_ctl.raw    = '0;
     mem_crit      = 1'b1;  // opt-out policy is safer
     order_crit    = 1'b0;
-    rs1_req       = 1'b0;
-    rs1_is_pc     = 1'b0;
-    rs2_req       = 1'b0;
-    rs2_is_imm    = 1'b0;
+    rs1_sel       = RS1_SEL_NONE;
+    rs2_sel       = RS2_SEL_NONE;
+    rs3_sel       = RS3_SEL_NONE;
     rd_upd        = 1'b1;  // true by default
-    // rs3_req = 1'b0;
     imm_format    = IMM_TYPE_I;
     opcode_except = 1'b0;
     except_code   = E_ILLEGAL_INSTRUCTION;
@@ -102,237 +96,224 @@ module issue_decoder (
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_ADD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       ADDW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_ADDW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       ADDI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_ADD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       ADDIW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_ADDW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SUB: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SUB;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SUBW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SUBW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       AND: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_AND;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       ANDI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_AND;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       OR: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_OR;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       ORI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_OR;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       XOR: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_XOR;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       XORI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_XOR;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SLL: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLL;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SLLW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLLW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SLLI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLL;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SLLIW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLLW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SRL: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRL;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SRLW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRLW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SRLI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRL;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SRLIW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRLW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SRA: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRA;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SRAW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRAW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SRAI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRA;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SRAIW: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SRAW;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SLT: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLT;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SLTU: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLTU;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
       end
       SLTI: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLT;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       SLTIU: begin
         issue_type  = ISSUE_TYPE_INT;
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_SLTU;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
-        rs2_is_imm  = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_IMM;
       end
       LUI: begin
         issue_type = ISSUE_TYPE_LUI;
@@ -345,9 +326,9 @@ module issue_decoder (
         assigned_eu = EU_INT_ALU;
         eu_ctl.alu  = ALU_ADD;
         mem_crit    = 1'b0;
+        rs1_sel     = RS1_SEL_PC;
+        rs2_sel     = RS2_SEL_IMM;
         imm_format  = IMM_TYPE_U;
-        rs1_is_pc   = 1'b1;
-        rs2_is_imm  = 1'b1;
       end
       JAL: begin
         issue_type  = ISSUE_TYPE_JUMP;
@@ -360,15 +341,15 @@ module issue_decoder (
         issue_type  = ISSUE_TYPE_JUMP;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = (instruction_i.raw == RET) ? BU_RET : BU_JALR;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       BEQ: begin
         issue_type  = ISSUE_TYPE_BRANCH;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = BU_BEQ;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_B;
       end
@@ -376,8 +357,8 @@ module issue_decoder (
         issue_type  = ISSUE_TYPE_BRANCH;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = BU_BNE;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_B;
       end
@@ -385,8 +366,8 @@ module issue_decoder (
         issue_type  = ISSUE_TYPE_BRANCH;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = BU_BLT;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_B;
       end
@@ -394,8 +375,8 @@ module issue_decoder (
         issue_type  = ISSUE_TYPE_BRANCH;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = BU_BLTU;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_B;
       end
@@ -403,8 +384,8 @@ module issue_decoder (
         issue_type  = ISSUE_TYPE_BRANCH;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = BU_BGE;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_B;
       end
@@ -412,8 +393,8 @@ module issue_decoder (
         issue_type  = ISSUE_TYPE_BRANCH;
         assigned_eu = EU_BRANCH_UNIT;
         eu_ctl.bu   = BU_BGEU;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_B;
       end
@@ -422,7 +403,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_BYTE;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       LBU: begin
@@ -430,7 +411,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_BYTE_U;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       LH: begin
@@ -438,7 +419,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_HALFWORD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       LHU: begin
@@ -446,7 +427,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_HALFWORD_U;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       LW: begin
@@ -454,7 +435,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_WORD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       LWU: begin
@@ -462,7 +443,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_WORD_U;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       LD: begin
@@ -470,7 +451,7 @@ module issue_decoder (
         assigned_eu = EU_LOAD_BUFFER;
         eu_ctl.lsu  = LS_DOUBLEWORD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
         imm_format  = IMM_TYPE_I;
       end
       SB: begin
@@ -478,8 +459,8 @@ module issue_decoder (
         assigned_eu = EU_STORE_BUFFER;
         eu_ctl.lsu  = LS_BYTE;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_S;
       end
@@ -488,8 +469,8 @@ module issue_decoder (
         assigned_eu = EU_STORE_BUFFER;
         eu_ctl.lsu  = LS_HALFWORD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_S;
       end
@@ -498,8 +479,8 @@ module issue_decoder (
         assigned_eu = EU_STORE_BUFFER;
         eu_ctl.lsu  = LS_WORD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_S;
       end
@@ -508,8 +489,8 @@ module issue_decoder (
         assigned_eu = EU_STORE_BUFFER;
         eu_ctl.lsu  = LS_DOUBLEWORD;
         mem_crit    = 1'b0;
-        rs1_req     = 1'b1;
-        rs2_req     = 1'b1;
+        rs1_sel     = RS1_SEL_INT;
+        rs2_sel     = RS2_SEL_INT;
         rd_upd      = 1'b0;
         imm_format  = IMM_TYPE_S;
       end
@@ -544,8 +525,8 @@ module issue_decoder (
           assigned_eu = EU_INT_MULT;
           eu_ctl.mult = MULT_MUL;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -558,8 +539,8 @@ module issue_decoder (
           assigned_eu = EU_INT_MULT;
           eu_ctl.mult = MULT_MULH;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -572,8 +553,8 @@ module issue_decoder (
           assigned_eu = EU_INT_MULT;
           eu_ctl.mult = MULT_MULHU;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -586,8 +567,8 @@ module issue_decoder (
           assigned_eu = EU_INT_MULT;
           eu_ctl.mult = MULT_MULHSU;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -600,8 +581,8 @@ module issue_decoder (
           assigned_eu = EU_INT_MULT;
           eu_ctl.mult = MULT_MULW;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -614,8 +595,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_DIV;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -628,8 +609,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_DIVU;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -642,8 +623,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_DIVW;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -656,8 +637,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_DIVUW;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -670,8 +651,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_REM;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -684,8 +665,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_REMU;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -698,8 +679,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_REMW;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -712,8 +693,8 @@ module issue_decoder (
           assigned_eu = EU_INT_DIV;
           eu_ctl.div  = DIV_REMUW;
           mem_crit    = 1'b0;
-          rs1_req     = 1'b1;
-          rs2_req     = 1'b1;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_INT;
         end else begin
           issue_type    = ISSUE_TYPE_EXCEPT;
           skip_eu       = 1'b1;
@@ -727,40 +708,37 @@ module issue_decoder (
         issue_type = ISSUE_TYPE_CSR;
         skip_eu    = 1'b1;
         order_crit = 1'b1;
-        rs2_req    = 1'b1;
+        rs2_sel    = RS2_SEL_INT;
       end
       CSRRWI: begin
         issue_type = ISSUE_TYPE_CSR;
         skip_eu    = 1'b1;
         order_crit = 1'b1;
-        rs2_req    = 1'b1;
-        rs2_is_imm = 1'b1;
+        rs2_sel    = RS2_SEL_IMM;
       end
       CSRRS: begin
         issue_type = ISSUE_TYPE_CSR;
         skip_eu    = 1'b1;
         order_crit = 1'b1;
-        rs2_req    = 1'b1;
+        rs2_sel    = RS2_SEL_INT;
       end
       CSRRSI: begin
         issue_type = ISSUE_TYPE_CSR;
         skip_eu    = 1'b1;
         order_crit = 1'b1;
-        rs2_req    = 1'b1;
-        rs2_is_imm = 1'b1;
+        rs2_sel    = RS2_SEL_IMM;
       end
       CSRRC: begin
         issue_type = ISSUE_TYPE_CSR;
         skip_eu    = 1'b1;
         order_crit = 1'b1;
-        rs2_req    = 1'b1;
+        rs2_sel    = RS2_SEL_INT;
       end
       CSRRCI: begin
         issue_type = ISSUE_TYPE_CSR;
         skip_eu    = 1'b1;
         order_crit = 1'b1;
-        rs2_req    = 1'b1;
-        rs2_is_imm = 1'b1;
+        rs2_sel    = RS2_SEL_IMM;
       end
 
       // RV32SYSTEM
@@ -779,8 +757,892 @@ module issue_decoder (
       end
 
       // RV64F
-      // TODO: add support for FPU instructions
+      FLW: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_LOAD_BUFFER;
+          eu_ctl.lsu  = LS_WORD;
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+          imm_format  = IMM_TYPE_I;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSW: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_STORE;
+          assigned_eu = EU_STORE_BUFFER;
+          eu_ctl.lsu  = LS_WORD;
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_FP;
+          rd_upd      = 1'b0;
+          imm_format  = IMM_TYPE_S;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMADD_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MADD_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMSUB_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MSUB_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FNMSUB_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_NMSUB_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FNMADD_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_NMADD_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FADD_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_ADD_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSUB_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SUB_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMUL_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MUL_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FDIV_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_DIV_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSQRT_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SQRT_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSGNJ_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SGNJ_S;  // TODO: check, the actual op is distinguished through rm
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSGNJN_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SGNJ_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSGNJX_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SGNJ_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMIN_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MINMAX_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMAX_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MINMAX_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_W_S: begin  // single to int
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_S2I;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_WU_S: begin  // single to unsigned int
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_S2I_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_S_W: begin  // int to single
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_I2S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_S_WU: begin  // unsigned int to single
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_I2S_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_L_S: begin  // single to long int
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_S2L;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_LU_S: begin  // single to unsigned int
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_S2L_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_S_L: begin  // long to single
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_L2S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_S_LU: begin  // unsigned long to single
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_L2S_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMV_X_W: begin  // single to int
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_S2I;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMV_W_X: begin  // int to single
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_I2S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FEQ_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CMP_S;  // TODO: check, rm encodes comp type
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FLT_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CMP_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FLE_S: begin
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CMP_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCLASS_S: begin  // write to int RF
+        if (LEN5_F_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CLASS_S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
 
+      // RV64D
+      FLD: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_LOAD_BUFFER;
+          eu_ctl.lsu  = LS_DOUBLEWORD;
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+          imm_format  = IMM_TYPE_I;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSD: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_STORE;
+          assigned_eu = EU_STORE_BUFFER;
+          eu_ctl.lsu  = LS_DOUBLEWORD;
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_FP;
+          rd_upd      = 1'b0;
+          imm_format  = IMM_TYPE_S;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMADD_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MADD_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMSUB_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MSUB_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FNMSUB_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_NMSUB_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FNMADD_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_NMADD_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+          rs3_sel     = RS3_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FADD_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_ADD_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSUB_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SUB_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMUL_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MUL_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FDIV_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_DIV_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSQRT_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SQRT_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSGNJ_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SGNJ_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSGNJN_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SGNJ_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FSGNJX_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_SGNJ_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMIN_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MINMAX_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMAX_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_MINMAX_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_S_D: begin  // double to single
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_D2S;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_D_S: begin  // single to double
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_S2D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_W_D: begin  // double to int
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_D2I;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_WU_D: begin  // double to 32-bit int
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_D2I_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_D_W: begin  //32-bit int to double
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_I2D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_D_WU: begin  // unsigned 32-bit int to double
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_I2D_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_L_D: begin  // double to 64-bit int
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_D2L;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_LU_D: begin  // double to 64-bit unsigned int
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_D2L_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_D_L: begin  // long int to double
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_L2D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCVT_D_LU: begin  // unsigned long int to double
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_L2D_U;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMV_X_D: begin  // double to 64-bit int
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_D2L;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FMV_D_X: begin  // int to fp reg
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_FP;  // FP RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_L2D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FEQ_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CMP_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FLT_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CMP_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FLE_D: begin
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CMP_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+          rs2_sel     = RS2_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      FCLASS_D: begin  // write to int RF
+        if (LEN5_D_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_FPU;
+          eu_ctl.fpu  = FPU_CLASS_D;  // TODO: check
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_FP;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+
+      // DUMMY COPR
+      XDUMMY_ITERATIVE: begin
+        if (LEN5_DUMMY_COPR_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;  // int RF destination
+          assigned_eu = EU_DUMMY_COPR;
+          eu_ctl.copr = DUMMY_ITERATIVE;
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_IMM;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
+      XDUMMY_PIPE: begin
+        if (LEN5_DUMMY_COPR_EN != 1'b0) begin
+          issue_type  = ISSUE_TYPE_INT;
+          assigned_eu = EU_DUMMY_COPR;
+          eu_ctl.copr = DUMMY_PIPELINE;
+          mem_crit    = 1'b0;
+          rs1_sel     = RS1_SEL_INT;
+          rs2_sel     = RS2_SEL_IMM;
+        end else begin
+          issue_type    = ISSUE_TYPE_EXCEPT;
+          skip_eu       = 1'b1;
+          opcode_except = 1'b1;
+        end
+      end
       // Unsupported instruction
       default: begin
         issue_type    = ISSUE_TYPE_EXCEPT;
@@ -801,12 +1663,10 @@ module issue_decoder (
   assign eu_ctl_o      = eu_ctl;
   assign mem_crit_o    = mem_crit;
   assign order_crit_o  = order_crit;
-  assign rs1_req_o     = rs1_req;
-  assign rs1_is_pc_o   = rs1_is_pc;
-  assign rs2_req_o     = rs2_req;
-  assign rs2_is_imm_o  = rs2_is_imm;
+  assign rs1_sel_o     = rs1_sel;
+  assign rs2_sel_o     = rs2_sel;
+  assign rs3_sel_o     = rs3_sel;
   assign rd_upd_o      = rd_upd;
-  //   assign rs3_req_o = rs3_req;
   assign imm_format_o  = imm_format;
 
   // ----------

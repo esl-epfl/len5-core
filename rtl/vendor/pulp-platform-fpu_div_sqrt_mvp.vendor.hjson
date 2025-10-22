@@ -1,0 +1,20 @@
+# OpenHW Group CVFPU floating-point divider sqrt unit
+{
+  name: "fpu-div-sqrt-mvp",
+  target_dir: "fpu-div-sqrt-mvp",
+
+  upstream: {
+    url: "https://github.com/pulp-platform/fpu_div_sqrt_mvp",
+    rev: "917dd79cb2dc1a8f43df1a84e0e4231508a980e9", # master @2024-05-15
+  },
+
+  exclude_from_upstream: [
+    ".gitignore",
+    "*/.gitignore",
+    ".gitmodules",
+    "Bender.yml",
+    "docs",
+    "tb",
+    "util",
+  ]
+}

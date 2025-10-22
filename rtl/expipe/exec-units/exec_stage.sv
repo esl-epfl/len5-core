@@ -9,7 +9,7 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: exec_stage.sv
-// Author: Michele Caon, Walid Walid
+// Author: Michele Caon, Walid Walid, Flavia Guella
 // Date: 17/11/2021
 module exec_stage (
   // Clock, reset, and flush
@@ -30,8 +30,10 @@ module exec_stage (
   input logic [len5_config_pkg::MAX_EU_N-1:0] issue_valid_i,  // valid to each RS
   output logic [len5_config_pkg::MAX_EU_N-1:0] issue_ready_o,  // ready from each RS
   input expipe_pkg::eu_ctl_t issue_eu_ctl_i,  // controls for the associated EU
+  input logic [csr_pkg::FCSR_FRM_LEN-1:0] issue_frm_i,  // rounding mode for the FPU
   input expipe_pkg::op_data_t issue_rs1_i,  // rs1 value, ROB index and availability
   input expipe_pkg::op_data_t issue_rs2_i,  // rs1 value, ROB index and availability
+  input expipe_pkg::op_data_t issue_rs3_i,  // rs3 value, ROB index and availability
   input  logic     [len5_pkg::XLEN-1:0] issue_imm_value_i,              // the value of the immediate field (for st and branches)
   input expipe_pkg::rob_idx_t issue_rob_idx_i,  // the location of the ROB assigned to the instruction
   input logic [len5_pkg::XLEN-1:0] issue_curr_pc_i,  // the PC of the current issuing instr (branches only)
@@ -50,7 +52,7 @@ module exec_stage (
   input  logic                 comm_sb_mem_clear_i,  // store is clear to execute
   output expipe_pkg::rob_idx_t comm_sb_mem_idx_o,    // executing store ROB index
 
-  // input logic     [FCSR_FRM_LEN-1:0] csr_frm_i,               // global rounding mode for the FPU
+  input logic [csr_pkg::FCSR_FRM_LEN-1:0] csr_frm_i,  // global rounding mode for the FPU
 
   // MEMORY SYSTEM
   // -------------
@@ -270,31 +272,68 @@ module exec_stage (
   // -------------------
   // FLOATING-POINT UNIT
   // -------------------
+  generate
+    if (LEN5_D_EN | LEN5_F_EN) begin : gen_fp_unit
+      fpu_unit #(
+        .EU_CTL_LEN(FPU_CTL_LEN),
+        .RS_DEPTH  (FPU_RS_DEPTH),
+        .RR_ARBITER(DIV_RR_ARBITER)
+      ) u_fpu_unit (
+        .clk_i               (clk_i),
+        .rst_ni              (rst_ni),
+        .flush_i             (mis_flush_i),
+        .issue_valid_i       (issue_valid_i[EU_FPU]),
+        .issue_ready_o       (issue_ready_o[EU_FPU]),
+        .issue_eu_ctl_i      (issue_eu_ctl_i.fpu),
+        .issue_frm_i         (issue_frm_i),
+        .issue_rs1_i         (issue_rs1_i),
+        .issue_rs2_i         (issue_rs2_i),
+        .issue_rs3_i         (issue_rs3_i),
+        .issue_dest_rob_idx_i(issue_rob_idx_i),
+        .cdb_ready_i         (cdb_ready_i[EU_FPU]),
+        .cdb_valid_i         (cdb_valid_i),
+        .cdb_valid_o         (cdb_valid_o[EU_FPU]),
+        .cdb_data_i          (cdb_data_i),
+        .cdb_data_o          (cdb_data_o[EU_FPU]),
+        .csr_frm_i           (csr_frm_i)
+      );
+    end else begin : gen_no_fpu_unit
+      assign issue_ready_o[EU_FPU] = 1'b0;
+      assign cdb_valid_o[EU_FPU]   = 1'b0;
+      assign cdb_data_o[EU_FPU]    = '0;
+    end
+  endgenerate
 
-  // fp_unit #(
-  //   .EU_CTL_LEN(FPU_CTL_LEN),
-  //   .RS_DEPTH  (FPU_RS_DEPTH)
-  // ) u_fpu_unit (
-  //   .clk_i              (clk_i),
-  //   .rst_ni            (rst_ni),
-  //   .flush_i            (mis_flush_i),
-  //   .issue_valid_i      (issue_valid_i[EU_FPU]),
-  //   .issue_ready_o      (issue_ready_o[EU_FPU]),
-  //   .eu_ctl_i           (issue_eu_ctl_i[FPU_CTL_LEN-1:0]),
-  //   .rs1_ready_i        (issue_rs1_i.ready),
-  //   .rs1_idx_i          (issue_rs1_i.rob_idx),
-  //   .rs1_value_i        (issue_rs1_i.value),
-  //   .rs2_ready_i        (issue_rs2_i.ready),
-  //   .rs2_idx_i          (issue_rs2_i.rob_idx),
-  //   .rs2_value_i        (issue_rs2_i.value),
-  //   .dest_idx_i         (issue_rob_idx_i),
-  //   .cdb_ready_i        (cdb_ready_i[EU_FPU]),
-  //   .cdb_valid_i        (cdb_valid_i),
-  //   .cdb_valid_o        (cdb_valid_o[EU_FPU]),
-  //   .cdb_idx_i          (cdb_data_i.rob_idx),
-  //   .cdb_data_i         (cdb_data_i.value),
-  //   .cdb_except_raised_i(cdb_data_i.except_raised),
-  //   .cdb_data_o         (cdb_data_o[EU_FPU]),
-  //   .csr_frm_i          (csr_frm_i)
-  // );
+  // Divider
+  generate
+    if (LEN5_DUMMY_COPR_EN) begin : gen_copr_unit
+      dummy_copr_unit #(
+        .EU_CTL_LEN    (MAX_EU_CTL_LEN),
+        .RS_DEPTH      (DUMMY_COPR_RS_DEPTH),
+        .RR_ARBITER    (DUMMY_COPR_RR_ARBITER),
+        .MAX_LATENCY   (DUMMY_COPR_MAX_LATENCY),
+        .MAX_PIPE_DEPTH(DUMMY_COPR_MAX_PIPE_DEPTH)
+      ) u_dummy_copr_unit (
+        .clk_i               (clk_i),
+        .rst_ni              (rst_ni),
+        .flush_i             (mis_flush_i),
+        .issue_valid_i       (issue_valid_i[EU_DUMMY_COPR]),
+        .issue_ready_o       (issue_ready_o[EU_DUMMY_COPR]),
+        .issue_eu_ctl_i      (issue_eu_ctl_i.copr),
+        .issue_rs1_i         (issue_rs1_i),
+        .issue_rs2_i         (issue_rs2_i),
+        .issue_dest_rob_idx_i(issue_rob_idx_i),
+        .cdb_ready_i         (cdb_ready_i[EU_DUMMY_COPR]),
+        .cdb_valid_i         (cdb_valid_i),
+        .cdb_valid_o         (cdb_valid_o[EU_DUMMY_COPR]),
+        .cdb_data_i          (cdb_data_i),
+        .cdb_data_o          (cdb_data_o[EU_DUMMY_COPR])
+      );
+    end else begin : gen_no_div_unit
+      assign issue_ready_o[EU_DUMMY_COPR] = 1'b0;
+      assign cdb_valid_o[EU_DUMMY_COPR]   = 1'b0;
+      assign cdb_data_o[EU_DUMMY_COPR]    = '0;
+    end
+  endgenerate
+
 endmodule

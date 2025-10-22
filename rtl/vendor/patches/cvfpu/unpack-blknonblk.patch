@@ -1,0 +1,616 @@
+diff --git a/src/fpnew_cast_multi.sv b/src/fpnew_cast_multi.sv
+index 7abe330..2989360 100644
+--- a/src/fpnew_cast_multi.sv
++++ b/src/fpnew_cast_multi.sv
+@@ -112,20 +112,22 @@ module fpnew_cast_multi #(
+   fpnew_pkg::int_format_e int_fmt_q;
+ 
+   // Input pipeline signals, index i holds signal after i register stages
+-  logic                   [0:NUM_INP_REGS][WIDTH-1:0]       inp_pipe_operands_q;
+-  logic                   [0:NUM_INP_REGS][NUM_FORMATS-1:0] inp_pipe_is_boxed_q;
+-  fpnew_pkg::roundmode_e  [0:NUM_INP_REGS]                  inp_pipe_rnd_mode_q;
+-  fpnew_pkg::operation_e  [0:NUM_INP_REGS]                  inp_pipe_op_q;
+-  logic                   [0:NUM_INP_REGS]                  inp_pipe_op_mod_q;
+-  fpnew_pkg::fp_format_e  [0:NUM_INP_REGS]                  inp_pipe_src_fmt_q;
+-  fpnew_pkg::fp_format_e  [0:NUM_INP_REGS]                  inp_pipe_dst_fmt_q;
+-  fpnew_pkg::int_format_e [0:NUM_INP_REGS]                  inp_pipe_int_fmt_q;
+-  TagType                 [0:NUM_INP_REGS]                  inp_pipe_tag_q;
+-  logic                   [0:NUM_INP_REGS]                  inp_pipe_mask_q;
+-  AuxType                 [0:NUM_INP_REGS]                  inp_pipe_aux_q;
+-  logic                   [0:NUM_INP_REGS]                  inp_pipe_valid_q;
++  logic                   [WIDTH-1:0]       inp_pipe_operands_q [0:NUM_INP_REGS];
++  logic                   [NUM_FORMATS-1:0] inp_pipe_is_boxed_q [0:NUM_INP_REGS];
++  fpnew_pkg::roundmode_e                    inp_pipe_rnd_mode_q [0:NUM_INP_REGS];
++  fpnew_pkg::operation_e                    inp_pipe_op_q [0:NUM_INP_REGS];
++  logic                                     inp_pipe_op_mod_q [0:NUM_INP_REGS];
++  fpnew_pkg::fp_format_e                    inp_pipe_src_fmt_q [0:NUM_INP_REGS];
++  fpnew_pkg::fp_format_e                    inp_pipe_dst_fmt_q [0:NUM_INP_REGS];
++  fpnew_pkg::int_format_e                   inp_pipe_int_fmt_q [0:NUM_INP_REGS];
++  TagType                                   inp_pipe_tag_q [0:NUM_INP_REGS];
++  logic                                     inp_pipe_mask_q [0:NUM_INP_REGS];
++  AuxType                                   inp_pipe_aux_q [0:NUM_INP_REGS];
++  logic                                     inp_pipe_valid_q [0:NUM_INP_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_INP_REGS] inp_pipe_ready;
++  logic inp_pipe_ready [0:NUM_INP_REGS];
++  // Input pipeline busy signal
++  logic [0:NUM_INP_REGS] inp_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign inp_pipe_operands_q[0] = operands_i;
+@@ -140,6 +142,7 @@ module fpnew_cast_multi #(
+   assign inp_pipe_mask_q[0]     = mask_i;
+   assign inp_pipe_aux_q[0]      = aux_i;
+   assign inp_pipe_valid_q[0]    = in_valid_i;
++  assign inp_pipe_busy[0]       = inp_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to updtream circuitry
+   assign in_ready_o = inp_pipe_ready[0];
+   // Generate the register stages
+@@ -166,6 +169,7 @@ module fpnew_cast_multi #(
+     `FFL(inp_pipe_tag_q[i+1],      inp_pipe_tag_q[i],      reg_ena, TagType'('0))
+     `FFL(inp_pipe_mask_q[i+1],     inp_pipe_mask_q[i],     reg_ena, '0)
+     `FFL(inp_pipe_aux_q[i+1],      inp_pipe_aux_q[i],      reg_ena, AuxType'('0))
++    assign inp_pipe_busy[i+1] = inp_pipe_valid_q[i+1];
+   end
+   // Output stage: assign selected pipe outputs to signals for later use
+   assign operands_q = inp_pipe_operands_q[NUM_INP_REGS];
+@@ -747,15 +751,17 @@ module fpnew_cast_multi #(
+   // Output Pipeline
+   // ----------------
+   // Output pipeline signals, index i holds signal after i register stages
+-  logic               [0:NUM_OUT_REGS][WIDTH-1:0] out_pipe_result_q;
+-  fpnew_pkg::status_t [0:NUM_OUT_REGS]            out_pipe_status_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_ext_bit_q;
+-  TagType             [0:NUM_OUT_REGS]            out_pipe_tag_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_mask_q;
+-  AuxType             [0:NUM_OUT_REGS]            out_pipe_aux_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_valid_q;
++  logic               [WIDTH-1:0] out_pipe_result_q [0:NUM_OUT_REGS];
++  fpnew_pkg::status_t             out_pipe_status_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_ext_bit_q [0:NUM_OUT_REGS];
++  TagType                         out_pipe_tag_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_mask_q [0:NUM_OUT_REGS];
++  AuxType                         out_pipe_aux_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_valid_q [0:NUM_OUT_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_OUT_REGS] out_pipe_ready;
++  logic out_pipe_ready [0:NUM_OUT_REGS];
++  // Output pipeline busy signal
++  logic [0:NUM_OUT_REGS] out_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign out_pipe_result_q[0]  = result_d;
+@@ -765,6 +771,7 @@ module fpnew_cast_multi #(
+   assign out_pipe_mask_q[0]    = mid_pipe_mask_q[NUM_MID_REGS];
+   assign out_pipe_aux_q[0]     = mid_pipe_aux_q[NUM_MID_REGS];
+   assign out_pipe_valid_q[0]   = mid_pipe_valid_q[NUM_MID_REGS];
++  assign out_pipe_busy[0]      = out_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to inside pipe
+   assign mid_pipe_ready[NUM_MID_REGS] = out_pipe_ready[0];
+   // Generate the register stages
+@@ -786,6 +793,7 @@ module fpnew_cast_multi #(
+     `FFL(out_pipe_tag_q[i+1],     out_pipe_tag_q[i],     reg_ena, TagType'('0))
+     `FFL(out_pipe_mask_q[i+1],    out_pipe_mask_q[i],    reg_ena, '0)
+     `FFL(out_pipe_aux_q[i+1],     out_pipe_aux_q[i],     reg_ena, AuxType'('0))
++    assign out_pipe_busy[i+1] = out_pipe_valid_q[i+1];
+   end
+   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
+   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;
+@@ -797,5 +805,5 @@ module fpnew_cast_multi #(
+   assign mask_o          = out_pipe_mask_q[NUM_OUT_REGS];
+   assign aux_o           = out_pipe_aux_q[NUM_OUT_REGS];
+   assign out_valid_o     = out_pipe_valid_q[NUM_OUT_REGS];
+-  assign busy_o          = (| {inp_pipe_valid_q, mid_pipe_valid_q, out_pipe_valid_q});
++  assign busy_o          = (| {inp_pipe_busy, mid_pipe_valid_q, out_pipe_busy});
+ endmodule
+diff --git a/src/fpnew_divsqrt_multi.sv b/src/fpnew_divsqrt_multi.sv
+index 56a2f5d..8d244f0 100644
+--- a/src/fpnew_divsqrt_multi.sv
++++ b/src/fpnew_divsqrt_multi.sv
+@@ -89,17 +89,19 @@ module fpnew_divsqrt_multi #(
+   logic                  in_valid_q;
+ 
+   // Input pipeline signals, index i holds signal after i register stages
+-  logic                  [0:NUM_INP_REGS][1:0][WIDTH-1:0]       inp_pipe_operands_q;
+-  fpnew_pkg::roundmode_e [0:NUM_INP_REGS]                       inp_pipe_rnd_mode_q;
+-  fpnew_pkg::operation_e [0:NUM_INP_REGS]                       inp_pipe_op_q;
+-  fpnew_pkg::fp_format_e [0:NUM_INP_REGS]                       inp_pipe_dst_fmt_q;
+-  TagType                [0:NUM_INP_REGS]                       inp_pipe_tag_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_mask_q;
+-  AuxType                [0:NUM_INP_REGS]                       inp_pipe_aux_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_vec_op_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_valid_q;
++  logic                  [1:0][WIDTH-1:0]       inp_pipe_operands_q [0:NUM_INP_REGS];
++  fpnew_pkg::roundmode_e                        inp_pipe_rnd_mode_q [0:NUM_INP_REGS];
++  fpnew_pkg::operation_e                        inp_pipe_op_q [0:NUM_INP_REGS];
++  fpnew_pkg::fp_format_e                        inp_pipe_dst_fmt_q [0:NUM_INP_REGS];
++  TagType                                       inp_pipe_tag_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_mask_q [0:NUM_INP_REGS];
++  AuxType                                       inp_pipe_aux_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_vec_op_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_valid_q [0:NUM_INP_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_INP_REGS] inp_pipe_ready;
++  logic inp_pipe_ready [0:NUM_INP_REGS];
++  // Input pipeline busy signal
++  logic [0:NUM_INP_REGS] inp_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign inp_pipe_operands_q[0] = operands_i;
+@@ -111,6 +113,7 @@ module fpnew_divsqrt_multi #(
+   assign inp_pipe_aux_q[0]      = aux_i;
+   assign inp_pipe_vec_op_q[0]   = vectorial_op_i;
+   assign inp_pipe_valid_q[0]    = in_valid_i;
++  assign inp_pipe_busy[0]            = inp_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to upstream circuitry
+   assign in_ready_o = inp_pipe_ready[0];
+   // Generate the register stages
+@@ -134,6 +137,7 @@ module fpnew_divsqrt_multi #(
+     `FFL(inp_pipe_mask_q[i+1],     inp_pipe_mask_q[i],     reg_ena, '0)
+     `FFL(inp_pipe_aux_q[i+1],      inp_pipe_aux_q[i],      reg_ena, AuxType'('0))
+     `FFL(inp_pipe_vec_op_q[i+1],   inp_pipe_vec_op_q[i],   reg_ena, AuxType'('0))
++    assign inp_pipe_busy[i+1] = inp_pipe_valid_q[i+1];
+   end
+   // Output stage: assign selected pipe outputs to signals for later use
+   assign operands_q = inp_pipe_operands_q[NUM_INP_REGS];
+@@ -328,14 +332,16 @@ module fpnew_divsqrt_multi #(
+   // Output Pipeline
+   // ----------------
+   // Output pipeline signals, index i holds signal after i register stages
+-  logic               [0:NUM_OUT_REGS][WIDTH-1:0] out_pipe_result_q;
+-  fpnew_pkg::status_t [0:NUM_OUT_REGS]            out_pipe_status_q;
+-  TagType             [0:NUM_OUT_REGS]            out_pipe_tag_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_mask_q;
+-  AuxType             [0:NUM_OUT_REGS]            out_pipe_aux_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_valid_q;
++  logic               [WIDTH-1:0] out_pipe_result_q [0:NUM_OUT_REGS];
++  fpnew_pkg::status_t             out_pipe_status_q [0:NUM_OUT_REGS];
++  TagType                         out_pipe_tag_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_mask_q [0:NUM_OUT_REGS];
++  AuxType                         out_pipe_aux_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_valid_q [0:NUM_OUT_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_OUT_REGS] out_pipe_ready;
++  logic out_pipe_ready [0:NUM_OUT_REGS];
++  // Output pipeline busy signal
++  logic [0:NUM_OUT_REGS] out_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign out_pipe_result_q[0] = result_d;
+@@ -344,6 +350,7 @@ module fpnew_divsqrt_multi #(
+   assign out_pipe_mask_q[0]   = result_mask_q;
+   assign out_pipe_aux_q[0]    = result_aux_q;
+   assign out_pipe_valid_q[0]  = out_valid;
++  assign out_pipe_busy[0]          = out_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to inside pipe
+   assign out_ready = out_pipe_ready[0];
+   // Generate the register stages
+@@ -364,6 +371,7 @@ module fpnew_divsqrt_multi #(
+     `FFL(out_pipe_tag_q[i+1],    out_pipe_tag_q[i],    reg_ena, TagType'('0))
+     `FFL(out_pipe_mask_q[i+1],   out_pipe_mask_q[i],   reg_ena, '0)
+     `FFL(out_pipe_aux_q[i+1],    out_pipe_aux_q[i],    reg_ena, AuxType'('0))
++    assign out_pipe_busy[i+1] = out_pipe_valid_q[i+1];
+   end
+   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
+   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;
+@@ -375,5 +383,5 @@ module fpnew_divsqrt_multi #(
+   assign mask_o          = out_pipe_mask_q[NUM_OUT_REGS];
+   assign aux_o           = out_pipe_aux_q[NUM_OUT_REGS];
+   assign out_valid_o     = out_pipe_valid_q[NUM_OUT_REGS];
+-  assign busy_o          = (| {inp_pipe_valid_q, unit_busy, out_pipe_valid_q});
++  assign busy_o          = (| {inp_pipe_busy, unit_busy, out_pipe_busy});
+ endmodule
+diff --git a/src/fpnew_divsqrt_th_32.sv b/src/fpnew_divsqrt_th_32.sv
+index 8ddb80e..d242c24 100644
+--- a/src/fpnew_divsqrt_th_32.sv
++++ b/src/fpnew_divsqrt_th_32.sv
+@@ -85,15 +85,17 @@ module fpnew_divsqrt_th_32 #(
+   logic                  in_valid_q;
+ 
+   // Input pipeline signals, index i holds signal after i register stages
+-  logic                  [0:NUM_INP_REGS][1:0][WIDTH-1:0]       inp_pipe_operands_q;
+-  fpnew_pkg::roundmode_e [0:NUM_INP_REGS]                       inp_pipe_rnd_mode_q;
+-  fpnew_pkg::operation_e [0:NUM_INP_REGS]                       inp_pipe_op_q;
+-  TagType                [0:NUM_INP_REGS]                       inp_pipe_tag_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_mask_q;
+-  AuxType                [0:NUM_INP_REGS]                       inp_pipe_aux_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_valid_q;
++  logic                  [1:0][WIDTH-1:0]       inp_pipe_operands_q [0:NUM_INP_REGS];
++  fpnew_pkg::roundmode_e                        inp_pipe_rnd_mode_q [0:NUM_INP_REGS];
++  fpnew_pkg::operation_e                        inp_pipe_op_q [0:NUM_INP_REGS];
++  TagType                                       inp_pipe_tag_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_mask_q [0:NUM_INP_REGS];
++  AuxType                                       inp_pipe_aux_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_valid_q [0:NUM_INP_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_INP_REGS] inp_pipe_ready;
++  logic inp_pipe_ready [0:NUM_INP_REGS];
++  // Input pipeline busy signal
++  logic [0:NUM_INP_REGS] inp_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign inp_pipe_operands_q[0] = operands_i;
+@@ -103,6 +105,7 @@ module fpnew_divsqrt_th_32 #(
+   assign inp_pipe_mask_q[0]     = mask_i;
+   assign inp_pipe_aux_q[0]      = aux_i;
+   assign inp_pipe_valid_q[0]    = in_valid_i;
++  assign inp_pipe_busy[0]       = inp_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to updtream circuitry
+   assign in_ready_o = inp_pipe_ready[0];
+   // Generate the register stages
+@@ -124,6 +127,7 @@ module fpnew_divsqrt_th_32 #(
+     `FFL(inp_pipe_tag_q[i+1],      inp_pipe_tag_q[i],      reg_ena, TagType'('0))
+     `FFL(inp_pipe_mask_q[i+1],     inp_pipe_mask_q[i],     reg_ena, '0)
+     `FFL(inp_pipe_aux_q[i+1],      inp_pipe_aux_q[i],      reg_ena, AuxType'('0))
++    assign inp_pipe_busy[i+1] = inp_pipe_valid_q[i+1];
+   end
+   // Output stage: assign selected pipe outputs to signals for later use
+   assign operands_q = inp_pipe_operands_q[NUM_INP_REGS];
+@@ -428,14 +432,16 @@ module fpnew_divsqrt_th_32 #(
+   // Output Pipeline
+   // ----------------
+   // Output pipeline signals, index i holds signal after i register stages
+-  logic               [0:NUM_OUT_REGS][WIDTH-1:0] out_pipe_result_q;
+-  fpnew_pkg::status_t [0:NUM_OUT_REGS]            out_pipe_status_q;
+-  TagType             [0:NUM_OUT_REGS]            out_pipe_tag_q;
+-  AuxType             [0:NUM_OUT_REGS]            out_pipe_aux_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_mask_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_valid_q;
++  logic               [WIDTH-1:0] out_pipe_result_q [0:NUM_OUT_REGS];
++  fpnew_pkg::status_t             out_pipe_status_q [0:NUM_OUT_REGS];
++  TagType                         out_pipe_tag_q [0:NUM_OUT_REGS];
++  AuxType                         out_pipe_aux_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_mask_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_valid_q [0:NUM_OUT_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_OUT_REGS] out_pipe_ready;
++  logic out_pipe_ready [0:NUM_OUT_REGS];
++  // Output pipeline ready signal
++  logic [0:NUM_OUT_REGS] out_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign out_pipe_result_q[0] = result_d;
+@@ -444,6 +450,7 @@ module fpnew_divsqrt_th_32 #(
+   assign out_pipe_mask_q[0]   = result_mask_q;
+   assign out_pipe_aux_q[0]    = result_aux_q;
+   assign out_pipe_valid_q[0]  = out_valid;
++  assign out_pipe_busy[0]     = out_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to inside pipe
+   assign out_ready = out_pipe_ready[0];
+   // Generate the register stages
+@@ -464,6 +471,7 @@ module fpnew_divsqrt_th_32 #(
+     `FFL(out_pipe_tag_q[i+1],    out_pipe_tag_q[i],    reg_ena, TagType'('0))
+     `FFL(out_pipe_mask_q[i+1],   out_pipe_mask_q[i],   reg_ena, '0)
+     `FFL(out_pipe_aux_q[i+1],    out_pipe_aux_q[i],    reg_ena, AuxType'('0))
++    assign out_pipe_busy[i+1] = out_pipe_valid_q[i+1];
+   end
+   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
+   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;
+@@ -475,5 +483,5 @@ module fpnew_divsqrt_th_32 #(
+   assign mask_o          = out_pipe_mask_q[NUM_OUT_REGS];
+   assign aux_o           = out_pipe_aux_q[NUM_OUT_REGS];
+   assign out_valid_o     = out_pipe_valid_q[NUM_OUT_REGS];
+-  assign busy_o          = (| {inp_pipe_valid_q, unit_busy, out_pipe_valid_q});
++  assign busy_o          = (| {inp_pipe_busy, unit_busy, out_pipe_busy});
+ endmodule
+diff --git a/src/fpnew_fma.sv b/src/fpnew_fma.sv
+index 6fdd890..f0c5bd6 100644
+--- a/src/fpnew_fma.sv
++++ b/src/fpnew_fma.sv
+@@ -103,17 +103,19 @@ module fpnew_fma #(
+   // Input pipeline
+   // ---------------
+   // Input pipeline signals, index i holds signal after i register stages
+-  logic                  [0:NUM_INP_REGS][2:0][WIDTH-1:0] inp_pipe_operands_q;
+-  logic                  [0:NUM_INP_REGS][2:0]            inp_pipe_is_boxed_q;
+-  fpnew_pkg::roundmode_e [0:NUM_INP_REGS]                 inp_pipe_rnd_mode_q;
+-  fpnew_pkg::operation_e [0:NUM_INP_REGS]                 inp_pipe_op_q;
+-  logic                  [0:NUM_INP_REGS]                 inp_pipe_op_mod_q;
+-  TagType                [0:NUM_INP_REGS]                 inp_pipe_tag_q;
+-  logic                  [0:NUM_INP_REGS]                 inp_pipe_mask_q;
+-  AuxType                [0:NUM_INP_REGS]                 inp_pipe_aux_q;
+-  logic                  [0:NUM_INP_REGS]                 inp_pipe_valid_q;
++  logic                  [2:0][WIDTH-1:0] inp_pipe_operands_q [0:NUM_INP_REGS];
++  logic                  [2:0]            inp_pipe_is_boxed_q [0:NUM_INP_REGS];
++  fpnew_pkg::roundmode_e                  inp_pipe_rnd_mode_q [0:NUM_INP_REGS];
++  fpnew_pkg::operation_e                  inp_pipe_op_q [0:NUM_INP_REGS];
++  logic                                   inp_pipe_op_mod_q [0:NUM_INP_REGS];
++  TagType                                 inp_pipe_tag_q [0:NUM_INP_REGS];
++  logic                                   inp_pipe_mask_q [0:NUM_INP_REGS];
++  AuxType                                 inp_pipe_aux_q [0:NUM_INP_REGS];
++  logic                                   inp_pipe_valid_q [0:NUM_INP_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_INP_REGS] inp_pipe_ready;
++  logic inp_pipe_ready [0:NUM_INP_REGS];
++  // Input pipeline busy signal
++  logic [0:NUM_INP_REGS] inp_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign inp_pipe_operands_q[0] = operands_i;
+@@ -125,6 +127,7 @@ module fpnew_fma #(
+   assign inp_pipe_mask_q[0]     = mask_i;
+   assign inp_pipe_aux_q[0]      = aux_i;
+   assign inp_pipe_valid_q[0]    = in_valid_i;
++  assign inp_pipe_busy[0]       = inp_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to updtream circuitry
+   assign in_ready_o = inp_pipe_ready[0];
+   // Generate the register stages
+@@ -148,6 +151,7 @@ module fpnew_fma #(
+     `FFL(inp_pipe_tag_q[i+1],      inp_pipe_tag_q[i],      reg_ena, TagType'('0))
+     `FFL(inp_pipe_mask_q[i+1],     inp_pipe_mask_q[i],     reg_ena, '0)
+     `FFL(inp_pipe_aux_q[i+1],      inp_pipe_aux_q[i],      reg_ena, AuxType'('0))
++    assign inp_pipe_busy[i+1] = inp_pipe_valid_q[i+1];
+   end
+ 
+   // -----------------
+@@ -644,14 +648,16 @@ module fpnew_fma #(
+   // Output Pipeline
+   // ----------------
+   // Output pipeline signals, index i holds signal after i register stages
+-  fp_t                [0:NUM_OUT_REGS] out_pipe_result_q;
+-  fpnew_pkg::status_t [0:NUM_OUT_REGS] out_pipe_status_q;
+-  TagType             [0:NUM_OUT_REGS] out_pipe_tag_q;
+-  logic               [0:NUM_OUT_REGS] out_pipe_mask_q;
+-  AuxType             [0:NUM_OUT_REGS] out_pipe_aux_q;
+-  logic               [0:NUM_OUT_REGS] out_pipe_valid_q;
++  fp_t                out_pipe_result_q [0:NUM_OUT_REGS];
++  fpnew_pkg::status_t out_pipe_status_q [0:NUM_OUT_REGS];
++  TagType             out_pipe_tag_q [0:NUM_OUT_REGS];
++  logic               out_pipe_mask_q [0:NUM_OUT_REGS];
++  AuxType             out_pipe_aux_q [0:NUM_OUT_REGS];
++  logic               out_pipe_valid_q [0:NUM_OUT_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_OUT_REGS] out_pipe_ready;
++  logic out_pipe_ready [0:NUM_OUT_REGS];
++  // Output pipeline busy signal
++  logic [0:NUM_OUT_REGS] out_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign out_pipe_result_q[0] = result_d;
+@@ -660,6 +666,7 @@ module fpnew_fma #(
+   assign out_pipe_mask_q[0]   = mid_pipe_mask_q[NUM_MID_REGS];
+   assign out_pipe_aux_q[0]    = mid_pipe_aux_q[NUM_MID_REGS];
+   assign out_pipe_valid_q[0]  = mid_pipe_valid_q[NUM_MID_REGS];
++  assign out_pipe_busy[0]     = out_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to inside pipe
+   assign mid_pipe_ready[NUM_MID_REGS] = out_pipe_ready[0];
+   // Generate the register stages
+@@ -680,6 +687,7 @@ module fpnew_fma #(
+     `FFL(out_pipe_tag_q[i+1],    out_pipe_tag_q[i],    reg_ena, TagType'('0))
+     `FFL(out_pipe_mask_q[i+1],   out_pipe_mask_q[i],   reg_ena, '0)
+     `FFL(out_pipe_aux_q[i+1],    out_pipe_aux_q[i],    reg_ena, AuxType'('0))
++    assign out_pipe_busy[i+1] = out_pipe_valid_q[i+1];
+   end
+   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
+   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;
+@@ -691,5 +699,5 @@ module fpnew_fma #(
+   assign mask_o          = out_pipe_mask_q[NUM_OUT_REGS];
+   assign aux_o           = out_pipe_aux_q[NUM_OUT_REGS];
+   assign out_valid_o     = out_pipe_valid_q[NUM_OUT_REGS];
+-  assign busy_o          = (| {inp_pipe_valid_q, mid_pipe_valid_q, out_pipe_valid_q});
++  assign busy_o          = (| {inp_pipe_busy, mid_pipe_valid_q, out_pipe_busy});
+ endmodule
+diff --git a/src/fpnew_fma_multi.sv b/src/fpnew_fma_multi.sv
+index 471d966..7a4d791 100644
+--- a/src/fpnew_fma_multi.sv
++++ b/src/fpnew_fma_multi.sv
+@@ -114,19 +114,21 @@ module fpnew_fma_multi #(
+   fpnew_pkg::fp_format_e dst_fmt_q;
+ 
+   // Input pipeline signals, index i holds signal after i register stages
+-  logic                  [0:NUM_INP_REGS][2:0][WIDTH-1:0]       inp_pipe_operands_q;
+-  logic                  [0:NUM_INP_REGS][NUM_FORMATS-1:0][2:0] inp_pipe_is_boxed_q;
+-  fpnew_pkg::roundmode_e [0:NUM_INP_REGS]                       inp_pipe_rnd_mode_q;
+-  fpnew_pkg::operation_e [0:NUM_INP_REGS]                       inp_pipe_op_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_op_mod_q;
+-  fpnew_pkg::fp_format_e [0:NUM_INP_REGS]                       inp_pipe_src_fmt_q;
+-  fpnew_pkg::fp_format_e [0:NUM_INP_REGS]                       inp_pipe_dst_fmt_q;
+-  TagType                [0:NUM_INP_REGS]                       inp_pipe_tag_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_mask_q;
+-  AuxType                [0:NUM_INP_REGS]                       inp_pipe_aux_q;
+-  logic                  [0:NUM_INP_REGS]                       inp_pipe_valid_q;
++  logic                  [2:0][WIDTH-1:0]       inp_pipe_operands_q [0:NUM_INP_REGS];
++  logic                  [NUM_FORMATS-1:0][2:0] inp_pipe_is_boxed_q [0:NUM_INP_REGS];
++  fpnew_pkg::roundmode_e                        inp_pipe_rnd_mode_q [0:NUM_INP_REGS];
++  fpnew_pkg::operation_e                        inp_pipe_op_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_op_mod_q [0:NUM_INP_REGS];
++  fpnew_pkg::fp_format_e                        inp_pipe_src_fmt_q [0:NUM_INP_REGS];
++  fpnew_pkg::fp_format_e                        inp_pipe_dst_fmt_q [0:NUM_INP_REGS];
++  TagType                                       inp_pipe_tag_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_mask_q [0:NUM_INP_REGS];
++  AuxType                                       inp_pipe_aux_q [0:NUM_INP_REGS];
++  logic                                         inp_pipe_valid_q [0:NUM_INP_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_INP_REGS] inp_pipe_ready;
++  logic inp_pipe_ready [0:NUM_INP_REGS];
++  // Input pipeline busy signal
++  logic [0:NUM_INP_REGS] inp_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign inp_pipe_operands_q[0] = operands_i;
+@@ -140,6 +142,7 @@ module fpnew_fma_multi #(
+   assign inp_pipe_mask_q[0]     = mask_i;
+   assign inp_pipe_aux_q[0]      = aux_i;
+   assign inp_pipe_valid_q[0]    = in_valid_i;
++  assign inp_pipe_busy[0]       = inp_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to updtream circuitry
+   assign in_ready_o = inp_pipe_ready[0];
+   // Generate the register stages
+@@ -165,6 +168,7 @@ module fpnew_fma_multi #(
+     `FFL(inp_pipe_tag_q[i+1],      inp_pipe_tag_q[i],      reg_ena, TagType'('0))
+     `FFL(inp_pipe_mask_q[i+1],     inp_pipe_mask_q[i],     reg_ena, '0)
+     `FFL(inp_pipe_aux_q[i+1],      inp_pipe_aux_q[i],      reg_ena, AuxType'('0))
++    assign inp_pipe_busy[i+1] = inp_pipe_valid_q[i+1];
+   end
+   // Output stage: assign selected pipe outputs to signals for later use
+   assign operands_q = inp_pipe_operands_q[NUM_INP_REGS];
+@@ -793,14 +797,16 @@ module fpnew_fma_multi #(
+   // Output Pipeline
+   // ----------------
+   // Output pipeline signals, index i holds signal after i register stages
+-  logic               [0:NUM_OUT_REGS][WIDTH-1:0] out_pipe_result_q;
+-  fpnew_pkg::status_t [0:NUM_OUT_REGS]            out_pipe_status_q;
+-  TagType             [0:NUM_OUT_REGS]            out_pipe_tag_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_mask_q;
+-  AuxType             [0:NUM_OUT_REGS]            out_pipe_aux_q;
+-  logic               [0:NUM_OUT_REGS]            out_pipe_valid_q;
++  logic               [WIDTH-1:0] out_pipe_result_q [0:NUM_OUT_REGS];
++  fpnew_pkg::status_t             out_pipe_status_q [0:NUM_OUT_REGS];
++  TagType                         out_pipe_tag_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_mask_q [0:NUM_OUT_REGS];
++  AuxType                         out_pipe_aux_q [0:NUM_OUT_REGS];
++  logic                           out_pipe_valid_q [0:NUM_OUT_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_OUT_REGS] out_pipe_ready;
++  logic out_pipe_ready [0:NUM_OUT_REGS];
++  // Output pipeline busy signal
++  logic [0:NUM_OUT_REGS] out_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign out_pipe_result_q[0] = result_d;
+@@ -809,6 +815,7 @@ module fpnew_fma_multi #(
+   assign out_pipe_mask_q[0]   = mid_pipe_mask_q[NUM_MID_REGS];
+   assign out_pipe_aux_q[0]    = mid_pipe_aux_q[NUM_MID_REGS];
+   assign out_pipe_valid_q[0]  = mid_pipe_valid_q[NUM_MID_REGS];
++  assign out_pipe_busy[0]     = out_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to inside pipe
+   assign mid_pipe_ready[NUM_MID_REGS] = out_pipe_ready[0];
+   // Generate the register stages
+@@ -829,6 +836,7 @@ module fpnew_fma_multi #(
+     `FFL(out_pipe_tag_q[i+1],    out_pipe_tag_q[i],    reg_ena, TagType'('0))
+     `FFL(out_pipe_mask_q[i+1],   out_pipe_mask_q[i],   reg_ena, '0)
+     `FFL(out_pipe_aux_q[i+1],    out_pipe_aux_q[i],    reg_ena, AuxType'('0))
++    assign out_pipe_busy[i+1] = out_pipe_valid_q[i+1];
+   end
+   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
+   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;
+@@ -840,5 +848,5 @@ module fpnew_fma_multi #(
+   assign mask_o          = out_pipe_mask_q[NUM_OUT_REGS];
+   assign aux_o           = out_pipe_aux_q[NUM_OUT_REGS];
+   assign out_valid_o     = out_pipe_valid_q[NUM_OUT_REGS];
+-  assign busy_o          = (| {inp_pipe_valid_q, mid_pipe_valid_q, out_pipe_valid_q});
++  assign busy_o          = (| {inp_pipe_busy, mid_pipe_valid_q, out_pipe_busy});
+ endmodule
+diff --git a/src/fpnew_noncomp.sv b/src/fpnew_noncomp.sv
+index 4dabfaa..6a1bb3c 100644
+--- a/src/fpnew_noncomp.sv
++++ b/src/fpnew_noncomp.sv
+@@ -88,17 +88,19 @@ module fpnew_noncomp #(
+   // Input pipeline
+   // ---------------
+   // Input pipeline signals, index i holds signal after i register stages
+-  logic                  [0:NUM_INP_REGS][1:0][WIDTH-1:0] inp_pipe_operands_q;
+-  logic                  [0:NUM_INP_REGS][1:0]            inp_pipe_is_boxed_q;
+-  fpnew_pkg::roundmode_e [0:NUM_INP_REGS]                 inp_pipe_rnd_mode_q;
+-  fpnew_pkg::operation_e [0:NUM_INP_REGS]                 inp_pipe_op_q;
+-  logic                  [0:NUM_INP_REGS]                 inp_pipe_op_mod_q;
+-  TagType                [0:NUM_INP_REGS]                 inp_pipe_tag_q;
+-  logic                  [0:NUM_INP_REGS]                 inp_pipe_mask_q;
+-  AuxType                [0:NUM_INP_REGS]                 inp_pipe_aux_q;
+-  logic                  [0:NUM_INP_REGS]                 inp_pipe_valid_q;
++  logic                  [1:0][WIDTH-1:0] inp_pipe_operands_q [0:NUM_INP_REGS];
++  logic                  [1:0]            inp_pipe_is_boxed_q [0:NUM_INP_REGS];
++  fpnew_pkg::roundmode_e                  inp_pipe_rnd_mode_q [0:NUM_INP_REGS];
++  fpnew_pkg::operation_e                  inp_pipe_op_q [0:NUM_INP_REGS];
++  logic                                   inp_pipe_op_mod_q [0:NUM_INP_REGS];
++  TagType                                 inp_pipe_tag_q [0:NUM_INP_REGS];
++  logic                                   inp_pipe_mask_q [0:NUM_INP_REGS];
++  AuxType                                 inp_pipe_aux_q [0:NUM_INP_REGS];
++  logic                                   inp_pipe_valid_q [0:NUM_INP_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_INP_REGS] inp_pipe_ready;
++  logic inp_pipe_ready [0:NUM_INP_REGS];
++  // Input pipeline busy signal
++  logic [0:NUM_INP_REGS] inp_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign inp_pipe_operands_q[0] = operands_i;
+@@ -110,6 +112,7 @@ module fpnew_noncomp #(
+   assign inp_pipe_mask_q[0]     = mask_i;
+   assign inp_pipe_aux_q[0]      = aux_i;
+   assign inp_pipe_valid_q[0]    = in_valid_i;
++  assign inp_pipe_busy[0]            = inp_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to updtream circuitry
+   assign in_ready_o = inp_pipe_ready[0];
+   // Generate the register stages
+@@ -133,6 +136,7 @@ module fpnew_noncomp #(
+     `FFL(inp_pipe_tag_q[i+1],      inp_pipe_tag_q[i],      reg_ena, TagType'('0))
+     `FFL(inp_pipe_mask_q[i+1],     inp_pipe_mask_q[i],     reg_ena, '0)
+     `FFL(inp_pipe_aux_q[i+1],      inp_pipe_aux_q[i],      reg_ena, AuxType'('0))
++    assign inp_pipe_busy[i+1] = inp_pipe_valid_q[i+1];
+   end
+ 
+   // ---------------------
+@@ -356,17 +360,19 @@ module fpnew_noncomp #(
+   // Output Pipeline
+   // ----------------
+   // Output pipeline signals, index i holds signal after i register stages
+-  fp_t                   [0:NUM_OUT_REGS] out_pipe_result_q;
+-  fpnew_pkg::status_t    [0:NUM_OUT_REGS] out_pipe_status_q;
+-  logic                  [0:NUM_OUT_REGS] out_pipe_extension_bit_q;
+-  fpnew_pkg::classmask_e [0:NUM_OUT_REGS] out_pipe_class_mask_q;
+-  logic                  [0:NUM_OUT_REGS] out_pipe_is_class_q;
+-  TagType                [0:NUM_OUT_REGS] out_pipe_tag_q;
+-  logic                  [0:NUM_OUT_REGS] out_pipe_mask_q;
+-  AuxType                [0:NUM_OUT_REGS] out_pipe_aux_q;
+-  logic                  [0:NUM_OUT_REGS] out_pipe_valid_q;
++  fp_t                   out_pipe_result_q [0:NUM_OUT_REGS];
++  fpnew_pkg::status_t    out_pipe_status_q [0:NUM_OUT_REGS];
++  logic                  out_pipe_extension_bit_q [0:NUM_OUT_REGS];
++  fpnew_pkg::classmask_e out_pipe_class_mask_q [0:NUM_OUT_REGS];
++  logic                  out_pipe_is_class_q [0:NUM_OUT_REGS];
++  TagType                out_pipe_tag_q [0:NUM_OUT_REGS];
++  logic                  out_pipe_mask_q [0:NUM_OUT_REGS];
++  AuxType                out_pipe_aux_q [0:NUM_OUT_REGS];
++  logic                  out_pipe_valid_q [0:NUM_OUT_REGS];
+   // Ready signal is combinatorial for all stages
+-  logic [0:NUM_OUT_REGS] out_pipe_ready;
++  logic out_pipe_ready [0:NUM_OUT_REGS];
++  // Output pipeline busy signal
++  logic [0:NUM_OUT_REGS] out_pipe_busy;
+ 
+   // Input stage: First element of pipeline is taken from inputs
+   assign out_pipe_result_q[0]        = result_d;
+@@ -378,6 +384,7 @@ module fpnew_noncomp #(
+   assign out_pipe_mask_q[0]          = inp_pipe_mask_q[NUM_INP_REGS];
+   assign out_pipe_aux_q[0]           = inp_pipe_aux_q[NUM_INP_REGS];
+   assign out_pipe_valid_q[0]         = inp_pipe_valid_q[NUM_INP_REGS];
++  assign out_pipe_busy[0]                 = out_pipe_valid_q[0];
+   // Input stage: Propagate pipeline ready signal to inside pipe
+   assign inp_pipe_ready[NUM_INP_REGS] = out_pipe_ready[0];
+   // Generate the register stages
+@@ -401,6 +408,7 @@ module fpnew_noncomp #(
+     `FFL(out_pipe_tag_q[i+1],           out_pipe_tag_q[i],           reg_ena, TagType'('0))
+     `FFL(out_pipe_mask_q[i+1],          out_pipe_mask_q[i],          reg_ena, '0)
+     `FFL(out_pipe_aux_q[i+1],           out_pipe_aux_q[i],           reg_ena, AuxType'('0))
++    assign out_pipe_busy[i+1] = out_pipe_valid_q[i+1];
+   end
+   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
+   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;
+@@ -414,5 +422,5 @@ module fpnew_noncomp #(
+   assign mask_o          = out_pipe_mask_q[NUM_OUT_REGS];
+   assign aux_o           = out_pipe_aux_q[NUM_OUT_REGS];
+   assign out_valid_o     = out_pipe_valid_q[NUM_OUT_REGS];
+-  assign busy_o          = (| {inp_pipe_valid_q, out_pipe_valid_q});
++  assign busy_o          = (| {inp_pipe_busy, out_pipe_busy});
+ endmodule
+diff --git a/src/fpnew_opgroup_multifmt_slice.sv b/src/fpnew_opgroup_multifmt_slice.sv
+index cdc3e34..94ebdf8 100644
+--- a/src/fpnew_opgroup_multifmt_slice.sv
++++ b/src/fpnew_opgroup_multifmt_slice.sv
+@@ -446,11 +446,11 @@ or set Features.FpFmtMask to support only FP32");
+   // Bypass lanes with target operand for vectorial casts
+   if (OpGroup == fpnew_pkg::CONV) begin : target_regs
+     // Bypass pipeline signals, index i holds signal after i register stages
+-    logic [0:NumPipeRegs][Width-1:0] byp_pipe_target_q;
+-    logic [0:NumPipeRegs][2:0]       byp_pipe_aux_q;
+-    logic [0:NumPipeRegs]            byp_pipe_valid_q;
++    logic [Width-1:0] byp_pipe_target_q [0:NumPipeRegs];
++    logic [2:0]       byp_pipe_aux_q [0:NumPipeRegs];
++    logic             byp_pipe_valid_q [0:NumPipeRegs];
+     // Ready signal is combinatorial for all stages
+-    logic [0:NumPipeRegs] byp_pipe_ready;
++    logic byp_pipe_ready [0:NumPipeRegs];
+ 
+     // Input stage: First element of pipeline is taken from inputs
+     assign byp_pipe_target_q[0]  = conv_target_d;

@@ -58,14 +58,64 @@ module commit_decoder (
         MUL, MULH, MULHSU, MULHU, MULW,
         REM, REMU, REMUW, REMW,
         DIV, DIVU, DIVUW, DIVW,
+        XDUMMY_ITERATIVE, XDUMMY_PIPE,
         LUI, AUIPC:
         comm_type = COMM_TYPE_INT_RF;
 
+        // Intructions committing to the floating RF
+        // ----------------------------------------
+        FMADD_S, FMSUB_S,
+        FNMSUB_S, FNMADD_S,
+        FADD_S, FSUB_S,
+        FMUL_S, FDIV_S,
+        FSQRT_S,
+        FSGNJ_S, FSGNJN_S, FSGNJX_S,
+        FMIN_S, FMAX_S,
+        FCVT_S_W, FCVT_S_WU,
+        FCVT_S_L, FCVT_S_LU,
+        FMV_W_X,
+        FMADD_D, FMSUB_D,
+        FNMSUB_D, FNMADD_D,
+        FADD_D, FSUB_D,
+        FMUL_D, FDIV_D,
+        FSQRT_D,
+        FSGNJ_D, FSGNJN_D, FSGNJX_D,
+        FMIN_D, FMAX_D,
+        FCVT_S_D, FCVT_D_S,
+        FCVT_D_W, FCVT_D_WU,
+        FCVT_D_L, FCVT_D_LU,
+        FMV_D_X: begin
+          comm_type = COMM_TYPE_FP_RF;
+          csr_op    = CSR_OP_CSRRS;  // TODO: check
+        end
+
+        // FP instructions committing to the int RF. Can set exception bits
+        // ----------------------------------------
+        FEQ_S, FLT_S, FLE_S,
+        FCVT_W_S, FCVT_WU_S,
+        FCVT_L_S, FCVT_LU_S,
+        FEQ_D, FLT_D, FLE_D,
+        FCVT_W_D, FCVT_WU_D,
+        FCVT_L_D, FCVT_LU_D: begin
+          comm_type = COMM_TYPE_INT_RF_FP;
+          csr_op    = CSR_OP_CSRRS;
+        end
+
+        // FP instructions committing to the int RF. Cannot set exception bits
+        // ----------------------------------------
+        FMV_X_W, FMV_X_D, FCLASS_S, FCLASS_D: comm_type = COMM_TYPE_INT_RF;
+
+        // Floating-point Load instructions
+        // --------------------------------
+        FLD, FLW: comm_type = COMM_TYPE_LOAD_FP;
+
+        // Load instructions
+        // ------------------
         LB, LBU, LD, LH, LHU, LUI, LW, LWU: comm_type = COMM_TYPE_LOAD;
 
         // Store instructions
         // ------------------
-        SB, SD, SH, SW: comm_type = COMM_TYPE_STORE;
+        SB, SD, SH, SW, FSW, FSD: comm_type = COMM_TYPE_STORE;
 
         // Jump instructions
         // -----------------

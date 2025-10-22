@@ -9,7 +9,7 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: mult_unit.sv
-// Author: Michele Caon
+// Author: Flavia Guella, Michele Caon
 // Date: 17/11/2021
 
 module mult_unit #(

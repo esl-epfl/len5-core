@@ -1,0 +1,26 @@
+CAPI=2:
+# Copyright 2024 POLITO and OpenHW Group
+# Solderpad Hardware License, Version 2.1, see LICENSE.md for details.
+# SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+
+name: "polito:len5:dummy_acc_top:0.1.0"
+description: "LEN5 dummy accelerator unit"
+
+filesets:
+  rtl:
+    depend:
+      - polito:dummy_acc:dummy_acc
+    files:
+      - expipe/exec-units/dummy_copr_unit.sv
+    file_type: systemVerilogSource
+
+  verilator-waivers:
+    files:
+      - misc/dummy-acc-waivers.vlt
+    file_type: vlt
+
+targets:
+    default:
+      filesets:
+        - rtl
+        - tool_verilator ? (verilator-waivers)

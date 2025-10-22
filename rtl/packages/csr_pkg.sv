@@ -45,7 +45,6 @@ package csr_pkg;
 
   // FLOATING-POINT
   // --------------
-
   localparam int unsigned FCSR_FFLAGS_LEN = 5;
   localparam int unsigned FCSR_FRM_LEN = 3;
   localparam int unsigned FCSR_LEN = FCSR_FFLAGS_LEN + FCSR_FRM_LEN;

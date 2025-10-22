@@ -2,3 +2,38 @@
 waive --rule=parameter-name-style --location="../../../rtl/packages"
 waive --rule=line-length --location="../../../rtl/packages/memory_pkg.sv"
 waive --rule=struct-union-name-style --location="../../../rtl/packages/memory_pkg.sv"
+
+# OpenHW CVFPU
+waive --rule=generate-label-prefix --location="../../../rtl/vendor/cvfpu"
+waive --rule=parameter-name-style --location="../../../rtl/vendor/cvfpu"
+waive --rule=packed-dimensions-range-ordering --location="../../../rtl/vendor/cvfpu"
+waive --rule=generate-label --location="../../../rtl/vendor/cvfpu"
+waive --rule=forbid-line-continuations --location="../../../rtl/vendor/cvfpu"
+waive --rule=explicit-parameter-storage-type --location="../../../rtl/vendor/cvfpu"
+waive --rule=undersized-binary-literal --location="../../../rtl/vendor/cvfpu"
+waive --rule=no-trailing-spaces --location="../../../rtl/vendor/cvfpu"
+waive --rule=line-length --location="../../../rtl/vendor/cvfpu"
+waive --rule=no-tabs --location="../../../rtl/vendor/cvfpu"
+waive --rule=unpacked-dimensions-range-ordering --location="../../../rtl/vendor/cvfpu"
+
+# PULP fpu div sqrt
+waive --rule=unpacked-dimensions-range-ordering --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=undersized-binary-literal --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=parameter-name-style --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=explicit-parameter-storage-type --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=generate-label --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=no-tabs --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=line-length --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+waive --rule=case-missing-default --location="../../../rtl/vendor/fpu-div-sqrt-mvp"
+
+
+# PULP common cells
+waive --rule=always-ff-non-blocking --location="../../../rtl/vendor/pulp-common-cells"
+waive --rule=forbid-line-continuations --location="../../../rtl/vendor/pulp-common-cells"
+waive --rule=interface-name-style --location="../../../rtl/vendor/pulp-common-cells"
+waive --rule=typedef-structs-unions --location="../../../rtl/vendor/pulp-common-cells"
+waive --rule=explicit-parameter-storage-type --location="../../../rtl/vendor/pulp-common-cells"
+
+# Dummy accelerator
+waive --rule=parameter-name-style --location="../../../rtl/vendor/dummy_accelerator"
+waive --rule=struct-union-name-style --location="../../../rtl/vendor/dummy_accelerator"

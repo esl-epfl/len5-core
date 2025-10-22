@@ -34,7 +34,7 @@ module csrs (
   output logic csr_exc_o,  // exception raised
 
   // Data to the FPU
-  // output logic [FCSR_FRM_LEN-1:0] fpu_frm_o,  // dynamic rounding mode
+  output logic [csr_pkg::FCSR_FRM_LEN-1:0] fpu_frm_o,  // dynamic rounding mode
 
   // Data to the load/store unit
   output csr_pkg::csr_priv_t priv_mode_o  // current privilege mode
@@ -113,6 +113,8 @@ module csrs (
   csr_mcause_t                   mcause;
   // MTVAL
   csr_mtval_t                    mtval;
+  // FCSR
+  csr_fcsr_t                     fcsr;
 
   // -----------
   // CSR CONTROL
@@ -197,6 +199,9 @@ module csrs (
   // MCOUNTEREN
   // NOTE: all counters accessible (even if not implemented)
   assign mcounteren         = {32{1'b1}};
+
+  // FCSR
+  assign fcsr               = 'h0;
 
   // MCOUNTINHIBIT
   // NOTE: only mcycle, minstret, and hpmcounter3/4 are enabled
@@ -291,6 +296,16 @@ module csrs (
         CSR_MTVAL: begin
           if (priv_mode >= PRIV_MODE_M) csr_rd_val = mtval;
         end
+        // floating point csr
+        CSR_FCSR: begin
+          csr_rd_val = {{XLEN - FCSR_LEN{1'b0}}, fcsr};
+        end
+        CSR_FFLAGS: begin
+          csr_rd_val = {{XLEN - FCSR_FFLAGS_LEN{1'b0}}, fcsr.fflags};
+        end
+        CSR_FRM: begin
+          csr_rd_val = {{XLEN - FCSR_FRM_LEN{1'b0}}, fcsr.frm};
+        end
         default: inv_acc_exc = 1'b1;
       endcase
     end
@@ -308,7 +323,7 @@ module csrs (
       // CSR DEFAULT VALUES
       // ------------------
       // fcsr
-      // fcsr <= '0;
+      fcsr         <= '0;
       // mstatus
       mstatus_mpp  <= PRIV_MODE_M;  // change to U-mode when supported
       mstatus_mpie <= 1'b0;
@@ -358,6 +373,16 @@ module csrs (
         // mtval
         CSR_MTVAL: begin
           if (comm_op_i == CSR_OP_SYSTEM || priv_mode >= PRIV_MODE_M) mtval <= csr_wr_val;
+        end
+        // floating point csr
+        CSR_FCSR: begin
+          if (priv_mode >= PRIV_MODE_M) fcsr <= csr_wr_val[FCSR_LEN-1:0];
+        end
+        CSR_FFLAGS: begin
+          if (priv_mode >= PRIV_MODE_M) fcsr.fflags <= csr_wr_val[FCSR_FFLAGS_LEN-1:0];
+        end
+        CSR_FRM: begin
+          if (priv_mode >= PRIV_MODE_M) fcsr.frm <= csr_wr_val[FCSR_FRM_LEN-1:0];
         end
         default: ;  // do not modify CSRs
       endcase
@@ -429,7 +454,7 @@ module csrs (
   // -----------
 
   // Data to FPU
-  // assign fpu_frm_o = fcsr.frm;
+  assign fpu_frm_o   = fcsr.frm;
   assign priv_mode_o = priv_mode;
 
   // CSR access exception

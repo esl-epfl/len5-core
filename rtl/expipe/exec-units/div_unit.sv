@@ -9,8 +9,8 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: div_unit.sv
-// Author: Michele Caon
-// Date: 17/11/2021
+// Author: Flavia Guella
+// Date: 22/02/2021
 
 module div_unit #(
   parameter int unsigned RS_DEPTH = 4,  // must be a power of 2,

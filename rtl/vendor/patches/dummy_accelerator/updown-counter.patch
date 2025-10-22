@@ -1,0 +1,13 @@
+diff --git a/dummy_accelerator.core b/dummy_accelerator.core
+index 0e6c58b..8e1c7d5 100644
+--- a/dummy_accelerator.core
++++ b/dummy_accelerator.core
+@@ -12,7 +12,7 @@ filesets:
+   rtl:
+     files:
+     - rtl/dummy_accelerator_pkg.sv
+-    - rtl/updown_counter.sv
++    #- rtl/updown_counter.sv
+     - rtl/dummy_accelerator_iterative_cu.sv
+     - rtl/dummy_accelerator_iterative.sv
+     - rtl/dummy_accelerator_pipeline_cu.sv

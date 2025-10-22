@@ -1,0 +1,99 @@
+CAPI=2:
+
+name : pulp-platform.org::common_cells:1.35.0
+
+filesets:
+  rtl-vendor:
+    files:
+      - pulp-common-cells/include/common_cells/registers.svh : {is_include_file : true, include_path : pulp-common-cells/include}
+      - pulp-common-cells/include/common_cells/assertions.svh : {is_include_file : true, include_path : pulp-common-cells/include}
+      # Source files grouped in levels. Files in level 0 have no dependencies on files in this package.
+      # Files in level 1 only depend on files in level 0, files in level 2 on files in levels 1 and 0,
+      # etc. Files within a level are ordered alphabetically.
+      # Level 0
+      - pulp-common-cells/src/binary_to_gray.sv
+      - pulp-common-cells/src/cb_filter_pkg.sv
+      - pulp-common-cells/src/cc_onehot.sv
+      - pulp-common-cells/src/cf_math_pkg.sv
+      - pulp-common-cells/src/clk_int_div.sv
+      - pulp-common-cells/src/delta_counter.sv
+      - pulp-common-cells/src/ecc_pkg.sv
+      - pulp-common-cells/src/edge_propagator_tx.sv
+      - pulp-common-cells/src/exp_backoff.sv
+      - pulp-common-cells/src/fifo_v3.sv
+      - pulp-common-cells/src/gray_to_binary.sv
+      - pulp-common-cells/src/isochronous_4phase_handshake.sv
+      - pulp-common-cells/src/isochronous_spill_register.sv
+      - pulp-common-cells/src/lfsr.sv
+      - pulp-common-cells/src/lfsr_16bit.sv
+      - pulp-common-cells/src/lfsr_8bit.sv
+      - pulp-common-cells/src/multiaddr_decode.sv
+      - pulp-common-cells/src/mv_filter.sv
+      - pulp-common-cells/src/onehot_to_bin.sv
+      - pulp-common-cells/src/plru_tree.sv
+      - pulp-common-cells/src/passthrough_stream_fifo.sv
+      - pulp-common-cells/src/popcount.sv
+      - pulp-common-cells/src/rr_arb_tree.sv
+      - pulp-common-cells/src/rstgen_bypass.sv
+      - pulp-common-cells/src/serial_deglitch.sv
+      - pulp-common-cells/src/shift_reg.sv
+      - pulp-common-cells/src/shift_reg_gated.sv
+      - pulp-common-cells/src/spill_register_flushable.sv
+      - pulp-common-cells/src/stream_demux.sv
+      - pulp-common-cells/src/stream_filter.sv
+      - pulp-common-cells/src/stream_fork.sv
+      - pulp-common-cells/src/stream_intf.sv
+      - pulp-common-cells/src/stream_join.sv
+      - pulp-common-cells/src/stream_join_dynamic.sv
+      - pulp-common-cells/src/stream_mux.sv
+      - pulp-common-cells/src/stream_throttle.sv
+      - pulp-common-cells/src/sub_per_hash.sv
+      - pulp-common-cells/src/sync.sv
+      - pulp-common-cells/src/sync_wedge.sv
+      - pulp-common-cells/src/unread.sv
+      - pulp-common-cells/src/read.sv
+      - pulp-common-cells/src/cdc_reset_ctrlr_pkg.sv
+      # Level 1
+      - pulp-common-cells/src/addr_decode_dync.sv
+      - pulp-common-cells/src/cdc_2phase.sv
+      - pulp-common-cells/src/cdc_4phase.sv
+      - pulp-common-cells/src/cb_filter.sv
+      - pulp-common-cells/src/cdc_fifo_2phase.sv
+      - pulp-common-cells/src/counter.sv
+      - pulp-common-cells/src/ecc_decode.sv
+      - pulp-common-cells/src/ecc_encode.sv
+      - pulp-common-cells/src/edge_detect.sv
+      - pulp-common-cells/src/lzc.sv
+      - pulp-common-cells/src/max_counter.sv
+      - pulp-common-cells/src/rstgen.sv
+      - pulp-common-cells/src/spill_register.sv
+      - pulp-common-cells/src/stream_delay.sv
+      - pulp-common-cells/src/stream_fifo.sv
+      - pulp-common-cells/src/stream_fork_dynamic.sv
+      - pulp-common-cells/src/clk_mux_glitch_free.sv
+      # Level 2
+      - pulp-common-cells/src/addr_decode.sv
+      - pulp-common-cells/src/addr_decode_napot.sv
+      - pulp-common-cells/src/cdc_reset_ctrlr.sv
+      - pulp-common-cells/src/cdc_fifo_gray.sv
+      - pulp-common-cells/src/fall_through_register.sv
+      - pulp-common-cells/src/id_queue.sv
+      - pulp-common-cells/src/stream_to_mem.sv
+      - pulp-common-cells/src/stream_arbiter_flushable.sv
+      - pulp-common-cells/src/stream_fifo_optimal_wrap.sv
+      - pulp-common-cells/src/stream_register.sv
+      - pulp-common-cells/src/stream_xbar.sv
+      # Level 3
+      - pulp-common-cells/src/cdc_fifo_gray_clearable.sv
+      - pulp-common-cells/src/cdc_2phase_clearable.sv
+      - pulp-common-cells/src/mem_to_banks_detailed.sv
+      - pulp-common-cells/src/stream_arbiter.sv
+      - pulp-common-cells/src/stream_omega_net.sv
+      # Level 4
+      - pulp-common-cells/src/mem_to_banks.sv
+    file_type: systemVerilogSource
+
+targets:
+  default:
+    filesets: 
+      - "!target_format ? (rtl-vendor)"

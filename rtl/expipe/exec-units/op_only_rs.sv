@@ -214,6 +214,7 @@ module op_only_rs #(
   assign cdb_data_o.res_value     = rs_data[head_idx].rs1_value;  // for CSR instructions
   assign cdb_data_o.except_raised = 1'b0;  // TODO: first check the mispred and address misaglined
   assign cdb_data_o.except_code   = E_UNKNOWN;
+  assign cdb_data_o.flags.raw     = '0;  // no flags set
 
   // ----------
   // ASSERTIONS

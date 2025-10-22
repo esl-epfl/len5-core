@@ -291,6 +291,7 @@ module branch_rs #(
   assign cdb_data_o.except_raised = 1'b0;
 `endif  // LEN5_C_EN
   assign cdb_data_o.except_code = (data[head_idx].mispredicted) ? E_MISPREDICTION : E_I_ADDR_MISALIGNED;
+  assign cdb_data_o.flags.raw = '0;  // no flags set
 
   // Branch Unit logic
   assign bu_valid_o = curr_state[ex_idx] == BU_S_EX_REQ;

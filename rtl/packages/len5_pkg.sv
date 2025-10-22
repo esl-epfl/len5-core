@@ -19,28 +19,28 @@ package len5_pkg;
   import len5_config_pkg::*;
 
   // Parameters
-  localparam int unsigned WWIDTH = 32;
-  localparam int unsigned AWIDTH = 64;
-  localparam int unsigned BWIDTH = 8;
+  localparam int unsigned WWIDTH = 32'd32;
+  localparam int unsigned AWIDTH = 32'd64;
+  localparam int unsigned BWIDTH = 32'd8;
   localparam int unsigned HWWIDTH = WWIDTH >> 1;
   localparam int unsigned DWWIDTH = WWIDTH << 1;
   localparam int unsigned LWIDTH = WWIDTH << 4;
 
   // Global constants
-  localparam int unsigned ILEN = 32;  // instruction length
-  localparam int unsigned ALEN = 64;  // address length
-  localparam int unsigned XLEN = 64;
-  localparam int unsigned FLEN = 64;
+  localparam int unsigned ILEN = 32'd32;  // instruction width
+  localparam int unsigned ALEN = 32'd64;  // address width
+  localparam int unsigned XLEN = 32'd64;  // integer data width
+  localparam int unsigned FLEN = (LEN5_D_EN) ? 32'd64 : 32'd32;  // floating-point data width
 
   /* Instruction fileds width */
-  localparam int unsigned OPCODE_LEN = 7;
-  localparam int unsigned FUNCT2_LEN = 2;
-  localparam int unsigned FUNCT3_LEN = 3;
-  localparam int unsigned FUNCT7_LEN = 7;
-  localparam int unsigned B_IMM = 12;  // B-type immediate length
-  localparam int unsigned I_IMM = 12;  // I-type immediate length
+  localparam int unsigned OPCODE_LEN = 32'd7;
+  localparam int unsigned FUNCT2_LEN = 32'd2;
+  localparam int unsigned FUNCT3_LEN = 32'd3;
+  localparam int unsigned FUNCT7_LEN = 32'd7;
+  localparam int unsigned B_IMM = 32'd12;  // B-type immediate length
+  localparam int unsigned I_IMM = 32'd12;  // I-type immediate length
   localparam int unsigned S_IMM = I_IMM;  // S-type immediate length
-  localparam int unsigned U_IMM = 20;  // U-type immediate length
+  localparam int unsigned U_IMM = 32'd20;  // U-type immediate length
   localparam int unsigned J_IMM = U_IMM;  // J-type immediate length
   localparam logic [ILEN-1:0] NOP = 'h13;
 
@@ -132,8 +132,8 @@ package len5_pkg;
   // ---------------
   // EXCEPTION CODES
   // ---------------
-  // To fit the last four bits of the mcause/scause CSR and the fflags of the fcsr CSR
-  localparam int unsigned EXCEPT_TYPE_LEN = 5;
+  // To fit the last four bits of the mcause/scause CSR
+  localparam int unsigned EXCEPT_TYPE_LEN = 32'd5;
 
   // This are the LSBs of the entire exception codes defined by the specs. This are used in the execution
   // pipeline to save area. This code can be directly appended when writing mcause/scause CSRs during
@@ -154,6 +154,8 @@ package len5_pkg;
     E_INSTR_PAGE_FAULT    = 'h0c,
     E_LD_PAGE_FAULT       = 'h0d,
     E_ST_PAGE_FAULT       = 'h0f,
+    E_SW_CHECK            = 'h12,
+    E_HW_ERROR            = 'h13,
 
     // Custom (for the commit unit)
     E_MISPREDICTION = 'h18,  // branch or jump mispredicted
@@ -163,8 +165,8 @@ package len5_pkg;
   // --------------
   // I-cache
   // --------------
-  localparam int unsigned ICACHE_OFFSET = 4;  // for 16-instruction lines
-  localparam int unsigned ICACHE_INSTR = 1 << ICACHE_OFFSET;
+  localparam int unsigned ICACHE_OFFSET = 32'd4;  // for 16-instruction lines
+  localparam int unsigned ICACHE_INSTR = 32'd1 << ICACHE_OFFSET;
 
   // icache output struct
   typedef struct packed {
@@ -175,12 +177,10 @@ package len5_pkg;
   // ------------------
   // EXECUTION PIPELINE
   // ------------------
-
-  // GLOBAL
-  localparam int unsigned XREG_NUM = 32;  // number of integer gp registers
+  localparam int unsigned XREG_NUM = 32'd32;  // number of integer gp registers
   localparam int unsigned REG_IDX_LEN = $clog2(XREG_NUM);  // RF address width
 
-  localparam int unsigned FREG_NUM = 32;  // number of floating-point registers
+  localparam int unsigned FREG_NUM = 32'd32;  // number of floating-point registers
   localparam int unsigned FREG_IDX_LEN = $clog2(FREG_NUM);  // FP RF address width
 
   localparam int unsigned LDBUFF_TAG_W = $clog2(LDBUFF_DEPTH);  // load buffer address width

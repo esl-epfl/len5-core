@@ -1,0 +1,158 @@
+diff --git a/src/cdc_2phase_clearable.sv b/src/cdc_2phase_clearable.sv
+index 3367a1f..0fb82d0 100644
+--- a/src/cdc_2phase_clearable.sv
++++ b/src/cdc_2phase_clearable.sv
+@@ -259,11 +259,13 @@ module cdc_2phase_src_clearable #(
+ // Assertions
+ `ifndef COMMON_CELLS_ASSERTS_OFF
+   `ifndef SYNTHESIS
++  `ifndef VERILATOR
+   no_clear_and_request: assume property (
+      @(posedge clk_i) disable iff(~rst_ni) (clear_i |-> ~valid_i))
+     else $fatal(1, "No request allowed while clear_i is asserted.");
+ 
+-  `endif
++  `endif /* VERILATOR */
++  `endif /* SYNTHESIS */
+ `endif
+ 
+ endmodule
+diff --git a/src/fifo_v3.sv b/src/fifo_v3.sv
+index a1b6118..9220687 100644
+--- a/src/fifo_v3.sv
++++ b/src/fifo_v3.sv
+@@ -138,6 +138,7 @@ module fifo_v3 #(
+     end
+ 
+ `ifndef SYNTHESIS
++`ifndef VERILATOR
+ `ifndef COMMON_CELLS_ASSERTS_OFF
+     initial begin
+         assert (DEPTH > 0)             else $error("DEPTH must be greater than 0.");
+@@ -151,6 +152,6 @@ module fifo_v3 #(
+         @(posedge clk_i) disable iff (~rst_ni) (empty_o |-> ~pop_i))
+         else $fatal (1, "Trying to pop data although the FIFO is empty.");
+ `endif
+-`endif
+-
++`endif /* VERILATOR */
++`endif /* SYNTHESIS */
+ endmodule // fifo_v3
+diff --git a/src/isochronous_4phase_handshake.sv b/src/isochronous_4phase_handshake.sv
+index 0778658..1509d09 100644
+--- a/src/isochronous_4phase_handshake.sv
++++ b/src/isochronous_4phase_handshake.sv
+@@ -69,6 +69,7 @@ module isochronous_4phase_handshake (
+   assign dst_valid_o = (dst_req_q != dst_ack_q);
+ 
+  `ifndef SYNTHESIS
++ `ifndef VERILATOR
+  // stability guarantees
+   `ifndef COMMON_CELLS_ASSERTS_OFF
+   assert property (@(posedge src_clk_i) disable iff (~src_rst_ni)
+@@ -76,6 +77,7 @@ module isochronous_4phase_handshake (
+   assert property (@(posedge dst_clk_i) disable iff (~dst_rst_ni)
+     (dst_valid_o && !dst_ready_i |=> $stable(dst_valid_o))) else $error("dst_valid_o is unstable");
+   `endif
+-  `endif
++  `endif  /* VERILATOR */
++  `endif  /* SYNTHESIS */
+ 
+ endmodule
+diff --git a/src/isochronous_spill_register.sv b/src/isochronous_spill_register.sv
+index 6c3048e..d1561af 100644
+--- a/src/isochronous_spill_register.sv
++++ b/src/isochronous_spill_register.sv
+@@ -96,6 +96,7 @@ module isochronous_spill_register #(
+   end
+ 
+   `ifndef SYNTHESIS
++  `ifndef VERILATOR
+   // stability guarantees
+   `ifndef COMMON_CELLS_ASSERTS_OFF
+   assert property (@(posedge src_clk_i) disable iff (~src_rst_ni)
+@@ -107,5 +108,6 @@ module isochronous_spill_register #(
+   assert property (@(posedge dst_clk_i) disable iff (~dst_rst_ni)
+     (dst_valid_o && !dst_ready_i |=> $stable(dst_data_o))) else $error("dst_data_o is unstable");
+   `endif
+-  `endif
++  `endif /* VERILATOR */
++  `endif  /* SYNTHESIS */
+ endmodule
+diff --git a/src/spill_register_flushable.sv b/src/spill_register_flushable.sv
+index 8588a43..fb5cd18 100644
+--- a/src/spill_register_flushable.sv
++++ b/src/spill_register_flushable.sv
+@@ -95,11 +95,13 @@ module spill_register_flushable #(
+     assign data_o = b_full_q ? b_data_q : a_data_q;
+ 
+     `ifndef SYNTHESIS
++    `ifndef VERILATOR
+     `ifndef COMMON_CELLS_ASSERTS_OFF
+     flush_valid : assert property (
+       @(posedge clk_i) disable iff (~rst_ni) (flush_i |-> ~valid_i)) else
+       $warning("Trying to flush and feed the spill register simultaneously. You will lose data!");
+    `endif
+-     `endif
++    `endif /* VERILATOR */
++     `endif /* SYNTHESIS */
+   end
+ endmodule
+diff --git a/src/stream_intf.sv b/src/stream_intf.sv
+index 1def97f..7b5cfa1 100644
+--- a/src/stream_intf.sv
++++ b/src/stream_intf.sv
+@@ -41,9 +41,11 @@ interface STREAM_DV #(
+ 
+   // Make sure that the handshake and payload is stable
+   `ifndef SYNTHESIS
++  `ifndef VERILATOR
+   `ifndef COMMON_CELLS_ASSERTS_OFF
+   assert property (@(posedge clk_i) (valid && !ready |=> $stable(data)));
+   assert property (@(posedge clk_i) (valid && !ready |=> valid));
+   `endif
+-  `endif
++  `endif /* VERILATOR */
++  `endif /* SYNTHESIS */
+ endinterface
+diff --git a/src/stream_omega_net.sv b/src/stream_omega_net.sv
+index 224ff1f..8e02d90 100644
+--- a/src/stream_omega_net.sv
++++ b/src/stream_omega_net.sv
+@@ -268,7 +268,6 @@ module stream_omega_net #(
+     `ifndef COMMON_CELLS_ASSERTS_OFF
+     `ifndef VERILATOR
+     default disable iff (~rst_ni);
+-    `endif
+     for (genvar i = 0; unsigned'(i) < NumInp; i++) begin : gen_sel_assertions
+       assert property (@(posedge clk_i) disable iff (~rst_ni)
+           (valid_i[i] |-> sel_i[i] < NumOut)) else
+@@ -310,5 +309,6 @@ module stream_omega_net #(
+     end
+     `endif
+     `endif
++    `endif
+   end
+ endmodule
+diff --git a/src/stream_xbar.sv b/src/stream_xbar.sv
+index f2aec30..c36ebb6 100644
+--- a/src/stream_xbar.sv
++++ b/src/stream_xbar.sv
+@@ -172,7 +172,6 @@ module stream_xbar #(
+   `ifndef COMMON_CELLS_ASSERTS_OFF
+   `ifndef VERILATOR
+   default disable iff (~rst_ni);
+-  `endif
+   for (genvar i = 0; unsigned'(i) < NumInp; i++) begin : gen_sel_assertions
+     assert property (@(posedge clk_i) disable iff (~rst_ni)
+         (valid_i[i] |-> sel_i[i] < NumOut)) else
+@@ -208,6 +207,7 @@ module stream_xbar #(
+     assert (NumInp > 32'd0) else $fatal(1, "NumInp has to be > 0!");
+     assert (NumOut > 32'd0) else $fatal(1, "NumOut has to be > 0!");
+   end
+-  `endif
+-  `endif
++  `endif /* VERILATOR */
++  `endif /* COMMON_CELLS_ASSERTS_OFF */
++  `endif /* SYNTHESIS */
+ endmodule

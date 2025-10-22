@@ -1,0 +1,25 @@
+CAPI=2:
+# Copyright 2024 POLITO and OpenHW Group
+# Solderpad Hardware License, Version 2.1, see LICENSE.md for details.
+# SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+
+name: "pulp-platform.org:fpu_div_sqrt_mvp:div_sqrt_mvp:0.0.1"
+description: "PULP Platform FPU DivSqrt MVP"
+
+filesets:
+  rtl:
+    files:
+      - fpu-div-sqrt-mvp/hdl/defs_div_sqrt_mvp.sv
+      - fpu-div-sqrt-mvp/hdl/control_mvp.sv
+      - fpu-div-sqrt-mvp/hdl/div_sqrt_mvp_wrapper.sv
+      - fpu-div-sqrt-mvp/hdl/div_sqrt_top_mvp.sv
+      - fpu-div-sqrt-mvp/hdl/iteration_div_sqrt_mvp.sv
+      - fpu-div-sqrt-mvp/hdl/norm_div_sqrt_mvp.sv
+      - fpu-div-sqrt-mvp/hdl/nrbd_nrsc_mvp.sv
+      - fpu-div-sqrt-mvp/hdl/preprocess_mvp.sv
+    file_type: systemVerilogSource
+
+targets:
+    default:
+      filesets:
+        - "!target_format ? (rtl)"

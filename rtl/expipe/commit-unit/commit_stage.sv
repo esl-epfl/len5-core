@@ -36,6 +36,9 @@ module commit_stage (
   input  expipe_pkg::rob_idx_t                        issue_rs2_rob_idx_i,
   output logic                                        issue_rs2_ready_o,
   output logic                   [len5_pkg::XLEN-1:0] issue_rs2_value_o,
+  input  expipe_pkg::rob_idx_t                        issue_rs3_rob_idx_i,
+  output logic                                        issue_rs3_ready_o,
+  output logic                   [len5_pkg::XLEN-1:0] issue_rs3_value_o,
   // resume execution after stall
   output logic                                        issue_resume_o,
 
@@ -48,11 +51,12 @@ module commit_stage (
   input  expipe_pkg::rob_idx_t sb_mem_idx_i,   // executing store ROB index
   output logic                 sb_mem_clear_o, // store is clear to execute
 
-  // Commit logic <--> register files and status
+  // Commit logic <--> int register files and status
   output logic int_rs_valid_o,
   output logic int_rf_valid_o,
-  // output logic fp_rs_valid_o,
-  // output logic fp_rf_valid_o,
+  // Commit logic <--> fp register files and status
+  output logic fp_rs_valid_o,
+  output logic fp_rf_valid_o,
 
   // Data to the register files
   output logic [len5_pkg::REG_IDX_LEN-1:0] rd_idx_o,   // the index of the destination register (rd)
@@ -102,6 +106,9 @@ module commit_stage (
   logic                   rob_opfwd_rs2_valid;
   logic                   rob_opfwd_rs2_ready;
   logic        [XLEN-1:0] rob_opfwd_rs2_value;
+  logic                   rob_opfwd_rs3_valid;
+  logic                   rob_opfwd_rs3_ready;
+  logic        [XLEN-1:0] rob_opfwd_rs3_value;
 
   // Input register <--> commit CU
   logic                   inreg_cu_mispredicted;
@@ -158,12 +165,16 @@ module commit_stage (
     .issue_tail_idx_o   (issue_tail_idx_o),
     .issue_rs1_rob_idx_i(issue_rs1_rob_idx_i),
     .issue_rs2_rob_idx_i(issue_rs2_rob_idx_i),
+    .issue_rs3_rob_idx_i(issue_rs3_rob_idx_i),
     .opfwd_rs1_valid_o  (rob_opfwd_rs1_valid),
     .opfwd_rs1_ready_o  (rob_opfwd_rs1_ready),
     .opfwd_rs1_value_o  (rob_opfwd_rs1_value),
     .opfwd_rs2_valid_o  (rob_opfwd_rs2_valid),
     .opfwd_rs2_ready_o  (rob_opfwd_rs2_ready),
     .opfwd_rs2_value_o  (rob_opfwd_rs2_value),
+    .opfwd_rs3_valid_o  (rob_opfwd_rs3_valid),
+    .opfwd_rs3_ready_o  (rob_opfwd_rs3_ready),
+    .opfwd_rs3_value_o  (rob_opfwd_rs3_value),
     .sb_mem_idx_i       (sb_mem_idx_i),
     .sb_mem_clear_o     (sb_mem_clear_o),
     .comm_valid_o       (rob_reg_valid),
@@ -249,6 +260,26 @@ module commit_stage (
       issue_rs2_ready_o = 1'b0;
       issue_rs2_value_o = '0;
     end
+    // RS3 - RV64D-RV64F
+    if (cdb_valid_i && cdb_data_i.rob_idx == issue_rs3_rob_idx_i) begin
+      issue_rs3_value_o = cdb_data_i.res_value;
+      issue_rs3_ready_o = 1'b1;
+    end else if (rob_opfwd_rs3_valid) begin
+      issue_rs3_ready_o = rob_opfwd_rs3_ready;
+      issue_rs3_value_o = rob_opfwd_rs3_value;
+    end else if (inreg_buff_full && inreg_buff_data.rob_idx == issue_rs3_rob_idx_i) begin
+      issue_rs3_ready_o = 1'b1;
+      issue_rs3_value_o = inreg_buff_data.data.res_value;
+    end else if (inreg_cu_valid && inreg_data_out.rob_idx == issue_rs3_rob_idx_i) begin
+      issue_rs3_ready_o = 1'b1;
+      issue_rs3_value_o = inreg_data_out.data.res_value;
+    end else if (comm_reg_valid && comm_reg_data.rob_idx == issue_rs3_rob_idx_i) begin
+      issue_rs3_ready_o = 1'b1;
+      issue_rs3_value_o = comm_reg_data.data.res_value;
+    end else begin
+      issue_rs3_ready_o = 1'b0;
+      issue_rs3_value_o = '0;
+    end
   end
 
   // COMMITTING INSTRUCTION REGISTER
@@ -304,8 +335,8 @@ module commit_stage (
     .except_code_i     (inreg_data_out.data.except_code),
     .int_rs_valid_o    (int_rs_valid_o),
     .int_rf_valid_o    (int_rf_valid_o),
-    // .fp_rs_valid_o     (fp_rs_valid_o),
-    // .fp_rf_valid_o     (fp_rf_valid_o),
+    .fp_rs_valid_o     (fp_rs_valid_o),
+    .fp_rf_valid_o     (fp_rf_valid_o),
     .csr_valid_o       (csr_valid_o),
     .csr_override_o    (cu_csr_override),
     .csr_comm_insn_o   (csr_comm_insn_o),
@@ -356,6 +387,10 @@ module commit_stage (
       end
       COMM_CSR_SEL_ZERO: begin
         csr_data = 'h0;
+        csr_addr = cu_csr_addr;
+      end
+      COMM_CSR_SEL_FP: begin
+        csr_data = {{XLEN - FCSR_FFLAGS_LEN{1'b0}}, comm_reg_data.data.flags.fflags};
         csr_addr = cu_csr_addr;
       end
       default: begin  // select zero

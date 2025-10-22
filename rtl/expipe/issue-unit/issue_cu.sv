@@ -9,7 +9,7 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: issue_cu.sv
-// Author: Michele Caon
+// Author: Michele Caon, Flavia Guella
 // Date: 17/08/2022
 
 module issue_cu (
@@ -36,7 +36,7 @@ module issue_cu (
   input  logic ex_mis_i,
   output logic ex_valid_o,
   output logic int_regstat_valid_o,
-  // output logic fp_regstat_valid_o,
+  output logic fp_regstat_valid_o,
 
   // Commit stage <--> CU
   input  logic comm_ready_i,
@@ -90,7 +90,7 @@ module issue_cu (
     end else if (iq_except_raised_i) begin
       v_next_state = S_FETCH_EXCEPT;
     end else begin
-      case (issue_type_i)
+      unique case (issue_type_i)
         ISSUE_TYPE_NONE:   v_next_state = S_ISSUE_NONE;
         ISSUE_TYPE_INT:    v_next_state = S_ISSUE_INT;
         ISSUE_TYPE_LUI:    v_next_state = S_ISSUE_LUI;
@@ -191,7 +191,7 @@ module issue_cu (
     issue_res_sel_rs1_o = 1'b0;
     ex_valid_o          = 1'b0;
     int_regstat_valid_o = 1'b0;
-    // fp_regstat_valid_o = 1'b0;
+    fp_regstat_valid_o  = 1'b0;
     comm_valid_o        = 1'b0;
 
     case (curr_state)
@@ -233,10 +233,10 @@ module issue_cu (
         int_regstat_valid_o = downstream_ready;
       end
       S_ISSUE_FP: begin
-        ex_valid_o   = downstream_ready;
-        comm_valid_o = downstream_ready;
-        iq_ready_o   = downstream_ready;
-        // fp_regstat_valid_o = downstream_ready;
+        ex_valid_o         = downstream_ready;
+        comm_valid_o       = downstream_ready;
+        iq_ready_o         = downstream_ready;
+        fp_regstat_valid_o = downstream_ready;
       end
       S_CSR_WAIT_OP: ;
       S_ISSUE_CSR: begin

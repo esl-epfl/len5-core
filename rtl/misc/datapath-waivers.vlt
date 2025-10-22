@@ -15,6 +15,3 @@ lint_off -rule UNUSED -file "*/datapath.sv" -match "Signal is not used: 'fetch_e
 lint_off -rule UNDRIVEN -file "*/datapath.sv" -match "Signal is not driven: 'irq_ack_o'"
 lint_off -rule UNDRIVEN -file "*/datapath.sv" -match "Signal is not driven: 'irq_id_o'"
 lint_off -rule UNDRIVEN -file "*/datapath.sv" -match "Signal is not driven: 'core_sleep_o'"
-
-
-

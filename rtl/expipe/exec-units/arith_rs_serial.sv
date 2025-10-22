@@ -9,8 +9,8 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: arith_rs_serial.sv
-// Author: Michele Caon
-// Date: 19/08/2022
+// Author: Flavia Guella
+// Date: 22/02/2024
 
 /* Reservation station for multicycle/serial units.
   Handshaking protocol is the same as all units.
@@ -354,6 +354,7 @@ module arith_rs_serial #(
   assign cdb_data_o.res_value     = data[cdb_idx].res_value;
   assign cdb_data_o.except_raised = data[cdb_idx].except_raised;
   assign cdb_data_o.except_code   = data[cdb_idx].except_code;
+  assign cdb_data_o.flags.raw     = '0;  // no flags set
 
   // Execution unit
   assign eu_ready_o               = 1'b1;  // TODO: check
@@ -388,7 +389,7 @@ module arith_rs_serial #(
         .valid_i (ready_ex),
         .ready_o (),            // eu_ready_i used instead
         .valid_o (eu_valid_o),
-        .ready_i (1'b1),
+        .ready_i (eu_ready_i),
         .served_o(ex_idx)
       );
 
@@ -402,7 +403,7 @@ module arith_rs_serial #(
         .valid_i (ready_cdb),
         .ready_o (),             // cdb_ready_i used instead
         .valid_o (cdb_valid_o),
-        .ready_i (1'b1),
+        .ready_i (cdb_ready_i),
         .served_o(cdb_idx)
       );
     end else begin : gen_prio_arbiters

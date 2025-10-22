@@ -33,6 +33,7 @@ module rob #(
   output expipe_pkg::rob_idx_t issue_tail_idx_o,  // the ROB entry where the new instruction is being allocated
   input expipe_pkg::rob_idx_t issue_rs1_rob_idx_i,
   input expipe_pkg::rob_idx_t issue_rs2_rob_idx_i,
+  input expipe_pkg::rob_idx_t issue_rs3_rob_idx_i,
 
   // Operands forwarding logic
   output logic                      opfwd_rs1_valid_o,
@@ -41,6 +42,10 @@ module rob #(
   output logic                      opfwd_rs2_valid_o,
   output logic                      opfwd_rs2_ready_o,
   output logic [len5_pkg::XLEN-1:0] opfwd_rs2_value_o,
+  output logic                      opfwd_rs3_valid_o,
+  output logic                      opfwd_rs3_ready_o,
+  output logic [len5_pkg::XLEN-1:0] opfwd_rs3_value_o,
+
 
   // Store buffer
   input  expipe_pkg::rob_idx_t sb_mem_idx_i,   // executing store ROB index
@@ -191,6 +196,7 @@ module rob #(
           data[i].res_value     <= cdb_data_i.res_value;
           data[i].except_raised <= cdb_data_i.except_raised;
           data[i].except_code   <= cdb_data_i.except_code;
+          data[i].flags         <= cdb_data_i.flags;
         end
       end
 
@@ -280,6 +286,9 @@ module rob #(
   assign opfwd_rs2_valid_o = data_valid[issue_rs2_rob_idx_i];
   assign opfwd_rs2_ready_o = data[issue_rs2_rob_idx_i].res_ready;
   assign opfwd_rs2_value_o = data[issue_rs2_rob_idx_i].res_value;
+  assign opfwd_rs3_valid_o = data_valid[issue_rs3_rob_idx_i];
+  assign opfwd_rs3_ready_o = data[issue_rs3_rob_idx_i].res_ready;
+  assign opfwd_rs3_value_o = data[issue_rs3_rob_idx_i].res_value;
 
   // ----------
   // ASSERTIONS
