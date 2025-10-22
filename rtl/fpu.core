@@ -1,0 +1,28 @@
+CAPI=2:
+# Copyright 2024 POLITO and OpenHW Group
+# Solderpad Hardware License, Version 2.1, see LICENSE.md for details.
+# SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+
+name: "polito:len5:fpu:0.1.0"
+description: "LEN5 FPU unit (based on OpenHW Group CVFPU)"
+
+filesets:
+  rtl:
+    depend:
+      - openhwgroup:cvfpu:cvfpu
+    files:
+      - expipe/exec-units/arith_rs_fpu.sv
+      - expipe/exec-units/fpu_unit.sv
+      - expipe/exec-units/fpu_wrapper.sv
+    file_type: systemVerilogSource
+
+  verilator-waivers:
+    files:
+      - misc/fpu-waivers.vlt
+    file_type: vlt
+
+targets:
+    default:
+      filesets:
+        - rtl
+        - tool_verilator ? (verilator-waivers)

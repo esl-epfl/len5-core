@@ -9,12 +9,8 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: fp_rf.sv
-// Author: Michele Caon
+// Author: Michele Caon, Flavia Guella
 // Date: 12/11/2019
-
-/*
- * TODO: ADD RS3!
- */
 
 module fp_rf (
   input logic clk_i,
@@ -26,16 +22,18 @@ module fp_rf (
 
   // Data from the commit logic (result write port)
   input logic [len5_pkg::FREG_IDX_LEN-1:0] comm_rd_idx_i,
-  input logic [        len5_pkg::XLEN-1:0] comm_rd_value_i,
+  input logic [        len5_pkg::FLEN-1:0] comm_rd_value_i,
 
   // Data to the issue stage (operands read ports)
   input  logic [len5_pkg::FREG_IDX_LEN-1:0] issue_rs1_idx_i,
   input  logic [len5_pkg::FREG_IDX_LEN-1:0] issue_rs2_idx_i,
-  output logic [        len5_pkg::XLEN-1:0] issue_rs1_value_o,
-  output logic [        len5_pkg::XLEN-1:0] issue_rs2_value_o
+  input  logic [len5_pkg::FREG_IDX_LEN-1:0] issue_rs3_idx_i,
+  output logic [        len5_pkg::FLEN-1:0] issue_rs1_value_o,
+  output logic [        len5_pkg::FLEN-1:0] issue_rs2_value_o,
+  output logic [        len5_pkg::FLEN-1:0] issue_rs3_value_o
 );
 
-  import len5_pkg::XLEN;
+  import len5_pkg::FLEN;
   import len5_pkg::FREG_NUM;
   import len5_pkg::FREG_IDX_LEN;
   import expipe_pkg::*;
@@ -43,7 +41,7 @@ module fp_rf (
   // DEFINITIONS
 
   // Register file data
-  logic [XLEN-1:0] rf_data[FREG_NUM];
+  logic [FLEN-1:0] rf_data[FREG_NUM];
 
   // ------------------------
   // REGISTER FILE WRITE PORT
@@ -68,6 +66,7 @@ module fp_rf (
   always_comb begin : operands_read_ports
     issue_rs1_value_o = rf_data[issue_rs1_idx_i];  // READ PORT 1 (rs1)
     issue_rs2_value_o = rf_data[issue_rs2_idx_i];  // READ PORT 2 (rs2)
+    issue_rs3_value_o = rf_data[issue_rs3_idx_i];  // READ PORT 3 (rs3)
   end
 
   // ---------

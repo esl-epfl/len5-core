@@ -1,0 +1,21 @@
+# OpenHW Group CVFPU floating-point unit
+{
+  name: "cvfpu",
+  target_dir: "cvfpu",
+
+  upstream: {
+    url: "https://github.com/openhwgroup/cvfpu.git",
+    rev: "79e453139072df42c9ec8f697132ba485d74e23d", # v0.8.1
+  },
+
+  patch_dir: "patches/cvfpu",
+
+  exclude_from_upstream: [
+    ".gitignore",
+    ".gitmodules",
+    "Bender.yml",
+    "docs",
+    "tb",
+    "util",
+  ]
+}

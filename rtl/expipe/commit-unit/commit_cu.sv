@@ -36,8 +36,8 @@ module commit_cu (
   output logic int_rf_valid_o,
 
   // CU <--> floating-point register file and status
-  // output logic fp_rs_valid_o,
-  // output logic fp_rf_valid_o,
+  output logic fp_rs_valid_o,
+  output logic fp_rf_valid_o,
 
   // CU <--> CSRs
   output logic csr_valid_o,
@@ -68,7 +68,9 @@ module commit_cu (
     IDLE,                // wait for a valid instruction from the ROB
     COMMIT_INT_RF,       // commit to the integer RF
     COMMIT_FP_RF,        // commit to the floating-point RF
+    COMMIT_INT_RF_FP,    // commit to the integer RF an FP instruction that can cause exceptions
     COMMIT_LOAD,         // commit load isntructions
+    COMMIT_LOAD_FP,      // commit load FP instructions
     COMMIT_STORE,        // commit store instructions
     COMMIT_JUMP,         // commit jump-and-link instructions
     COMMIT_JUMP_MIS,     // flush the pipeline after misprediction
@@ -112,12 +114,20 @@ module commit_cu (
         if (res_ready_i) v_next_state = COMMIT_INT_RF;
         else v_next_state = HALT;
       end
-      // COMM_TYPE_FP_RF: begin
-      //   if (res_ready_i) v_next_state = COMMIT_FP_RF;
-      //   else v_next_state = HALT;
-      // end
+      COMM_TYPE_FP_RF: begin
+        if (res_ready_i) v_next_state = COMMIT_FP_RF;
+        else v_next_state = HALT;
+      end
+      COMM_TYPE_INT_RF_FP: begin
+        if (res_ready_i) v_next_state = COMMIT_INT_RF_FP;
+        else v_next_state = HALT;
+      end
       COMM_TYPE_LOAD: begin
         if (res_ready_i) v_next_state = COMMIT_LOAD;
+        else v_next_state = HALT;
+      end
+      COMM_TYPE_LOAD_FP: begin
+        if (res_ready_i) v_next_state = COMMIT_LOAD_FP;
         else v_next_state = HALT;
       end
       COMM_TYPE_STORE: begin
@@ -150,7 +160,7 @@ module commit_cu (
   always_comb begin : cu_state_prog
     case (curr_state)
       // Reset state
-      RESET: next_state = IDLE;
+      RESET:              next_state = IDLE;
       // Idle: wait for a valid instruction
       IDLE: begin
         if (valid_i) next_state = v_next_state;
@@ -161,18 +171,26 @@ module commit_cu (
         if (valid_i) next_state = v_next_state;
         else next_state = IDLE;
       end
+      // Commit to the floating-point register file
+      COMMIT_FP_RF: begin
+        if (valid_i) next_state = v_next_state;
+        else next_state = IDLE;
+      end
+      // Commit to the integer register file and write FCSR if exception
+      COMMIT_INT_RF_FP: begin
+        if (valid_i) next_state = v_next_state;
+        else next_state = IDLE;
+      end
       // Commit load instructions
       COMMIT_LOAD: begin
         if (valid_i) next_state = v_next_state;
         else next_state = IDLE;
       end
-
-      // Commit to the floating-point register file
-      // COMMIT_FP_RF: begin
-      //   if (valid_i) next_state = v_next_state;
-      //   else next_state = IDLE;
-      // end
-
+      // Commit load FP instructions
+      COMMIT_LOAD_FP: begin
+        if (valid_i) next_state = v_next_state;
+        else next_state = IDLE;
+      end
       // Commit store instructions
       COMMIT_STORE: begin
         if (valid_i) next_state = v_next_state;
@@ -257,8 +275,8 @@ module commit_cu (
     csr_addr_o         = CSR_MEPC;
     int_rs_valid_o     = 1'b0;
     int_rf_valid_o     = 1'b0;
-    // fp_rs_valid_o = 1'b0;
-    // fp_rf_valid_o = 1'b0;
+    fp_rs_valid_o      = 1'b0;
+    fp_rf_valid_o      = 1'b0;
     csr_valid_o        = 1'b0;
     csr_comm_insn_o    = COMM_CSR_INSTR_TYPE_NONE;
     fe_except_raised_o = 1'b0;
@@ -281,18 +299,41 @@ module commit_cu (
         csr_comm_insn_o = COMM_CSR_INSTR_TYPE_INT;
       end
 
-      // COMMIT_FP_RF: begin
-      // ready_o         = 1'b1;
-      // fp_rs_valid_o   = 1'b1;
-      // fp_rf_valid_o   = 1'b1;
-      // comm_reg_en_o   = 1'b1;
-      // csr_comm_insn_o = COMM_CSR_INSTR_TYPE_OTHER;
-      // end
+      COMMIT_FP_RF: begin
+        ready_o         = 1'b1;
+        fp_rs_valid_o   = 1'b1;
+        fp_rf_valid_o   = 1'b1;
+        comm_reg_en_o   = 1'b1;
+        csr_valid_o     = 1'b1;
+        csr_addr_o      = CSR_FFLAGS;
+        comm_csr_sel_o  = COMM_CSR_SEL_FP;
+        csr_comm_insn_o = COMM_CSR_INSTR_TYPE_FP;  // TODO: check, add type
+      end
+
+      // TODO: modify. Commit to int RF but add csrset commands
+      COMMIT_INT_RF_FP: begin
+        ready_o         = 1'b1;
+        int_rs_valid_o  = 1'b1;
+        int_rf_valid_o  = 1'b1;
+        comm_reg_en_o   = 1'b1;
+        csr_valid_o     = 1'b1;
+        csr_addr_o      = CSR_FFLAGS;
+        comm_csr_sel_o  = COMM_CSR_SEL_FP;
+        csr_comm_insn_o = COMM_CSR_INSTR_TYPE_FP;  // TODO: check
+      end
 
       COMMIT_LOAD: begin
         ready_o         = 1'b1;
         int_rs_valid_o  = 1'b1;
         int_rf_valid_o  = 1'b1;
+        comm_reg_en_o   = 1'b1;
+        csr_comm_insn_o = COMM_CSR_INSTR_TYPE_LOAD;
+      end
+      // load to the FP RF
+      COMMIT_LOAD_FP: begin
+        ready_o         = 1'b1;
+        fp_rs_valid_o   = 1'b1;
+        fp_rf_valid_o   = 1'b1;
         comm_reg_en_o   = 1'b1;
         csr_comm_insn_o = COMM_CSR_INSTR_TYPE_LOAD;
       end

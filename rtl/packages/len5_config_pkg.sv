@@ -27,6 +27,65 @@ package len5_config_pkg;
   // Boot program counter
   localparam logic [63:0] BOOT_PC = 64'h180;
 
+
+  // -----------------
+  // FEATURES SWITCHES
+  // -----------------
+
+  // Enable M extension support
+  // --------------------------
+  localparam bit LEN5_M_EN = 1'b1;  // integer hardware multiplication and division
+  localparam bit LEN5_DIV_EN = 1'b1;  // integer division (not compliant if set to 0)
+
+  // Enable floating-point support (F,D extensions)
+  // ----------------------------------------------
+  localparam bit LEN5_F_EN = 1'b1;  // single-precision instructions
+  localparam bit LEN5_D_EN = 1'b1;  // double-precision instructions
+
+  // Enable C extension support
+  // --------------------------
+  // NOTE: CURRENTLY UNSUPPORTED
+  localparam bit LEN5_C_EN = 1'b0;  // compressed instructions
+
+  // Enable A extension support
+  // --------------------------
+  // NOTE: CURRENTLY UNSUPPORTED
+  localparam bit LEN5_A_EN = 1'b0;  // atomic instructions
+
+  // Enable dummy accelerator support
+  // --------------------------------
+  localparam bit LEN5_DUMMY_COPR_EN = 1'b1;
+
+  // Enable store-to-load forwarding
+  // -------------------------------
+  // This switch instantiates a small cache with the same size as store buffer
+  // inside the Load-Store Unit. This cache records the store buffer entry
+  // containing the latest instruction that wrote a certain memory location.
+  // When a load instruction accesses the same location, the forwarding of the
+  // stored result is attempted.
+  // IMPORTANT: this feature breaks reads from memory-mapped devices, therefore
+  // it is only applied to memory addresses outside of the region masked by
+  // 'MMAP_MASK' (defined above).
+  localparam bit LEN5_STORE_LOAD_FWD_EN = 1'b1;
+
+  // Maximum number of execution units :
+  // load buffer, store buffer, branch unit, ALU, MULT, DIV, FPU, DUMMY_ACC
+  localparam int unsigned MAX_EU_N = 32'd8;
+
+  // Memory
+  // ------
+  // If defined, instantiate a byte selector in the load buffer. All memory
+  // accesses are aligned on 64 bits, and the selector picks the correct
+  // word/halfword/byte from it the fetched doubleword.
+  localparam bit ONLY_DOUBLEWORD_MEM_ACCESSES = 1'b0;
+
+  // CSRs
+  // ----
+  // If defined, instantiate additional performance counters (mcycle and
+  // minstret are always instantiated). See 'csrs.sv' to see what counters are
+  // available in LEN5.
+  localparam bit LEN5_CSR_HPMCOUNTERS_EN = 1'b1;
+
   // MEMORY-MAPPED DEVICES
   // ---------------------
   // Address mask for memory-mapped devices
@@ -38,10 +97,10 @@ package len5_config_pkg;
   // FRONTEND PARAMETERS
   // -------------------
   // BPU g-share predictor global history length
-  localparam int unsigned BPU_HLEN = 4;
+  localparam int unsigned BPU_HLEN = 32'd4;
   // BPU Branch Target Buffer (BTB) addressing bits (the remaining ones are used
   // as tag)
-  localparam int unsigned BPU_BTB_BITS = 4;
+  localparam int unsigned BPU_BTB_BITS = 32'd4;
 
   // -------------------
   // PIPELINE PARAMETERS
@@ -57,7 +116,7 @@ package len5_config_pkg;
   // FETCH STAGE
   // -----------
   // Return Address Stack (RAS) depth
-  localparam int unsigned RAS_DEPTH = 8;
+  localparam int unsigned RAS_DEPTH = 32'd8;
 
   // Fetch memory interface
   // NOTE: if the memory is 0-latency, at least one of the fetch unit registers
@@ -69,34 +128,46 @@ package len5_config_pkg;
   // EXECUTION PIPELINE
   // ------------------
   // ISSUE QUEUE
-  localparam int unsigned IQ_DEPTH = 4;  // number of entries in the issue queue (power of 2)
+  localparam int unsigned IQ_DEPTH = 32'd4;  // number of entries in the issue queue (power of 2)
 
   // LOAD/STORE UNIT
-  localparam int unsigned LDBUFF_DEPTH = 8;  // number of entries in the load buffer
-  localparam int unsigned STBUFF_DEPTH = 16;  // number of entries in the store buffer
+  localparam int unsigned LDBUFF_DEPTH = 32'd8;  // number of entries in the load buffer
+  localparam int unsigned STBUFF_DEPTH = 32'd16;  // number of entries in the store buffer
   localparam bit LSU_SPILL_SKIP = 1'b1;  // make address adder fully combinational
 
   // ALU UNIT
-  localparam int unsigned ALU_RS_DEPTH = 8;
+  localparam int unsigned ALU_RS_DEPTH = 32'd8;
   localparam bit ALU_SPILL_SKIP = 1'b1;  // make the ALU fully combinational
   localparam bit ALU_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
 
   // MULT UNIT
-  localparam int unsigned MULT_RS_DEPTH = 4;
+  localparam int unsigned MULT_RS_DEPTH = 32'd4;
   localparam bit LEN5_MULT_SERIAL = 1'b0;
-  localparam int unsigned MULT_PIPE_DEPTH = 1;  // pipeline stages (only if 'LEN5_MULT_SERIAL' is 0)
+  localparam int unsigned MULT_PIPE_DEPTH = 32'd1;  // pipeline stages (only if 'LEN5_MULT_SERIAL' is 0)
   localparam bit MULT_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
 
   // DIV UNIT
-  localparam int unsigned DIV_RS_DEPTH = 4;
+  localparam int unsigned DIV_RS_DEPTH = 32'd4;
   localparam bit DIV_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
 
+  // FPU UNIT
+  localparam int unsigned FPU_RS_DEPTH = 32'd8;
+  localparam bit FPU_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
+  localparam int unsigned FPU_PIPE_DEPTH = 32'd4;  // pipeline stages
+  localparam bit FPU_SPILL_SKIP = 1'b1;  // skip input registers
+
+  // DUMMY COPROCESSOR UNIT
+  localparam int unsigned DUMMY_COPR_RS_DEPTH = 32'd4;
+  localparam bit DUMMY_COPR_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
+  localparam int unsigned DUMMY_COPR_MAX_LATENCY = 32'd128; // maximum latency for iterative instructions
+  localparam int unsigned DUMMY_COPR_MAX_PIPE_DEPTH = 32'd301; // maximum pipeline depth for pipelined instructions
+
   // BRANCH UNIT
-  localparam int unsigned BU_RS_DEPTH = 4;
+  localparam int unsigned BU_RS_DEPTH = 32'd4;
   localparam bit BU_SPILL_SKIP = 1'b1;  // make the target address adder fully combinational
 
   // COMMIT STAGE
-  localparam int unsigned ROB_DEPTH  /* verilator public */ = 32;  // Number of entries in the ROB
+  localparam int unsigned ROB_DEPTH  /* verilator public */ = 32'd32;  // Number of entries in the ROB
   localparam bit COMMIT_SPILL_SKIP = 1'b1;  // directly connect the commit CU to the ROB output
 
   // -----------------

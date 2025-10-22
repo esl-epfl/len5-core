@@ -393,6 +393,7 @@ module store_buffer #(
   assign cdb_data_o.res_value     = data[head_idx].imm_addr_value;
   assign cdb_data_o.except_raised = data[head_idx].except_raised;
   assign cdb_data_o.except_code   = data[head_idx].except_code;
+  assign cdb_data_o.flags.raw     = '0;  // no flags set
 
   // Address adder
   assign adder_valid_o            = curr_state[addr_idx] == STORE_S_ADDR_REQ;

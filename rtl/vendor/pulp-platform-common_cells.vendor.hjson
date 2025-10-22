@@ -1,0 +1,28 @@
+# PULP Platform common cells
+{
+  name: "pulp-common-cells",
+  target_dir: "pulp-common-cells",
+
+  upstream: {
+    url: "https://github.com/pulp-platform/common_cells",
+    rev: "0d67563b6b592549542544f1abc0f43e5d4ee8b4", # v1.35.0
+  },
+
+  patch_dir: "patches/pulp-common-cells",
+
+  exclude_from_upstream: [
+    ".github",
+    ".gitignore",
+    ".gitlab-ci.yml",
+    ".travis.yml",
+    "Bender.yml",
+    "common_cells.core",
+    "src_files.yml",
+    "ips_list.yml"
+    "ci",
+    "formal",
+    "lint",
+    "src/deprecated",
+    "test",
+  ]
+}

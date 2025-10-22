@@ -43,7 +43,7 @@ package expipe_pkg;
   localparam int unsigned FP_EU_N = (LEN5_F_EN || LEN5_D_EN) ? 1 : 0;  // FPU
 
   // Total number of execution units
-  localparam int unsigned EU_N = BASE_EU_N + MULT_EU_N + DIV_EU_N + FP_EU_N;
+  localparam int unsigned EU_N = BASE_EU_N + MULT_EU_N + DIV_EU_N + FP_EU_N + DUMMY_COPR_EU_N;
 
   // RESERVATION STATIONS
   // --------------------
@@ -62,7 +62,9 @@ package expipe_pkg;
   localparam int unsigned DIV_CTL_LEN = 2;  // integer divider operation control
 
   // FPU
-  localparam int unsigned FPU_CTL_LEN = 4;  // floating point multiplier operation control
+  localparam int unsigned FPU_CTL_LEN = 6;  // floating point multiplier operation control
+
+  localparam int unsigned DUMMY_ACC_CTL_LEN = 1;  // dummy accelerator operation control
 
   // OPERANDS ONLY
   localparam int unsigned OP_ONLY_CTL_LEN = 2;
@@ -72,7 +74,7 @@ package expipe_pkg;
 
   // MAXIMUM DIMENSION OF EU_CONTROL FIELDS
   // this must be set to the maximum of the previous parameters
-  localparam int unsigned MAX_EU_CTL_LEN = ALU_CTL_LEN;
+  localparam int unsigned MAX_EU_CTL_LEN = FPU_CTL_LEN;
 
 
   // REGISTER STATUS REGISTER(S)
@@ -82,8 +84,20 @@ package expipe_pkg;
   // ----
   // ROB
   // ----
+  // Flags
+  // Currently used for floating-point flags (in FCSR) only
+  // TODO: find a better way to encode these in except_code_t (e.g., when
+  // except_raised is low)
+  localparam int unsigned FLAGS_LEN = csr_pkg::FCSR_FFLAGS_LEN;
+  typedef union packed {
+    csr_pkg::fcsr_fflags_t fflags;
+    logic [FLAGS_LEN-1:0]  raw;
+  } flags_t;
+
+  // ROB index
   typedef logic [ROB_IDX_LEN-1:0] rob_idx_t;
 
+  // ROB entry
   typedef struct packed {
     instr_t instruction;  // the instruction
     logic [XLEN-1:0] instr_pc;  // the program counter of the instruction
@@ -95,6 +109,7 @@ package expipe_pkg;
     logic order_crit;  // no out-of-order commit allowed
     logic except_raised;  // an exception has been raised
     except_code_t except_code;  // the exception code
+    flags_t flags;  // execution flags
     logic mem_clear;  // clear to commit to memory out of order (stores only)
   } rob_entry_t;
 
@@ -106,6 +121,7 @@ package expipe_pkg;
     logic [XLEN-1:0] res_value;
     logic            except_raised;
     except_code_t    except_code;
+    flags_t          flags;
   } cdb_data_t;
 
   // --------------------
@@ -152,6 +168,65 @@ package expipe_pkg;
     DIV_REMW
   } div_ctl_t;
 
+  // FPU opcodes
+
+  //TODO: order in a convenient way to split them into op and mod according to FPU
+  // LSB: S-D source
+  // LSB+1: modifier
+  // LSB or ~LSB: destination
+  typedef enum logic [FPU_CTL_LEN-1:0] {
+    FPU_MADD_S,    //00 0 0
+    FPU_MADD_D,    //00 0 1
+    FPU_MSUB_S,    //00 1 0
+    FPU_MSUB_D,    //00 1 1
+    FPU_NMADD_S,   //01 0 0
+    FPU_NMADD_D,   //01 0 1
+    FPU_NMSUB_S,   //01 1 0
+    FPU_NMSUB_D,   //01 1 1
+    FPU_ADD_S,     //10 0 0
+    FPU_ADD_D,     //10 0 1
+    FPU_SUB_S,
+    FPU_SUB_D,
+    FPU_MUL_S,
+    FPU_MUL_D,
+    FPU_DIV_S,
+    FPU_DIV_D,
+    FPU_SQRT_S,
+    FPU_SQRT_D,
+    FPU_SGNJ_S,    //TODO: check if distinction in mod is required
+    FPU_SGNJ_D,
+    FPU_MINMAX_S,
+    FPU_MINMAX_D,
+    FPU_CMP_S,
+    FPU_CMP_D,
+    FPU_CLASS_S,
+    FPU_CLASS_D,
+    FPU_S2D,       //0110 1 0
+    FPU_D2S,       //0110 1 1
+    FPU_I2S,       //0111 0 0
+    FPU_I2D,       //0111 0 1
+    FPU_I2S_U,     //0111 1 0
+    FPU_I2D_U,     //0111 1 1
+    FPU_L2S,       //1000 0 0
+    FPU_L2D,       //1000 0 1
+    FPU_L2S_U,     //1000 1 0
+    FPU_L2D_U,     //1000 1 1
+    FPU_S2I,       //1001 0 0
+    FPU_D2I,       //1001 0 1
+    FPU_S2I_U,     //1001 1 0
+    FPU_D2I_U,     //1001 1 1
+    FPU_S2L,       //1010 0 0
+    FPU_D2L,       //1010 0 1
+    FPU_S2L_U,     //1010 1 1
+    FPU_D2L_U      //1010 1 1
+  } fpu_ctl_t;
+
+  // Dummy coprocessor unit control
+  typedef enum logic [MAX_EU_CTL_LEN-1:0] {
+    DUMMY_PIPELINE,
+    DUMMY_ITERATIVE
+  } dummy_copr_ctl_t;
+
   // Branch unit control
   typedef enum logic [MAX_EU_CTL_LEN-1:0] {
     BU_BEQ  = 'h0,
@@ -184,6 +259,8 @@ package expipe_pkg;
     div_ctl_t                  div;
     branch_ctl_t               bu;
     ldst_width_t               lsu;
+    fpu_ctl_t                  fpu;
+    dummy_copr_ctl_t           copr;
     logic [MAX_EU_CTL_LEN-1:0] raw;
   } eu_ctl_t;
 
@@ -203,17 +280,18 @@ package expipe_pkg;
 
   // Issue operation type
   typedef enum logic [3:0] {
-    ISSUE_TYPE_NONE,    // no special action required
-    ISSUE_TYPE_INT,     // update integer register status
-    ISSUE_TYPE_LUI,     // LUI instruction
-    ISSUE_TYPE_STORE,   // store instructions
-    ISSUE_TYPE_BRANCH,  // branch instructions
-    ISSUE_TYPE_JUMP,    // jump instructions
-    ISSUE_TYPE_FP,      // update floating-point register status
-    ISSUE_TYPE_CSR,     // CSR immediate instruction
-    ISSUE_TYPE_STALL,   // stall until the current instruction commits
-    ISSUE_TYPE_WFI,     // wait for interrupt instruction
-    ISSUE_TYPE_EXCEPT   // an exception was generated
+    ISSUE_TYPE_NONE,      // no special action required
+    ISSUE_TYPE_INT,       // update integer register status
+    ISSUE_TYPE_LUI,       // LUI instruction
+    ISSUE_TYPE_STORE,     // store instructions
+    ISSUE_TYPE_STORE_FP,  // fp store instructions
+    ISSUE_TYPE_BRANCH,    // branch instructions
+    ISSUE_TYPE_JUMP,      // jump instructions
+    ISSUE_TYPE_FP,        // update floating-point register status
+    ISSUE_TYPE_CSR,       // CSR immediate instruction
+    ISSUE_TYPE_STALL,     // stall until the current instruction commits
+    ISSUE_TYPE_WFI,       // wait for interrupt instruction
+    ISSUE_TYPE_EXCEPT     // an exception was generated
   } issue_type_t;
 
   // Assigned execution unit
@@ -226,8 +304,29 @@ MAX_EU_N
     EU_INT_ALU,
     EU_INT_MULT,
     EU_INT_DIV,
-    EU_FPU
+    EU_FPU,
+    EU_DUMMY_COPR
   } issue_eu_t;
+
+  // Operand source
+  typedef enum logic [1:0] {
+    RS1_SEL_NONE,
+    RS1_SEL_INT,
+    RS1_SEL_FP,
+    RS1_SEL_PC
+  } rs1_sel_t;
+
+  typedef enum logic [1:0] {
+    RS2_SEL_NONE,
+    RS2_SEL_INT,
+    RS2_SEL_IMM,
+    RS2_SEL_FP
+  } rs2_sel_t;
+
+  typedef enum logic {
+    RS3_SEL_NONE,
+    RS3_SEL_FP
+  } rs3_sel_t;
 
   // Immediate type
   typedef enum logic [2:0] {
@@ -278,20 +377,22 @@ MAX_EU_N
   // ------------
   // Commit destination data type
   typedef enum logic [3:0] {
-    COMM_TYPE_NONE,    // no data to commit (e.g., nops)
+    COMM_TYPE_NONE,  // no data to commit (e.g., nops)
     COMM_TYPE_INT_RF,  // commit to integer register file
-    COMM_TYPE_FP_RF,   // commit to floating-point register file
-    COMM_TYPE_LOAD,    // commit load instructions
-    COMM_TYPE_STORE,   // commit store instructions
+    COMM_TYPE_FP_RF,  // commit to floating-point register file
+    COMM_TYPE_INT_RF_FP, // commit to integer register file but can trigger a floating-point exception
+    COMM_TYPE_LOAD,  // commit load instructions
+    COMM_TYPE_LOAD_FP,  // commit load instructions to the floating-point RF
+    COMM_TYPE_STORE,  // commit store instructions
     COMM_TYPE_BRANCH,  // commit branch instructions
-    COMM_TYPE_JUMP,    // commit jump-and-link instructions
-    COMM_TYPE_CSR,     // commit to CSRs
-    COMM_TYPE_FENCE,   // commit fence instructions
-    COMM_TYPE_ECALL,   // commit ECALL instructions
+    COMM_TYPE_JUMP,  // commit jump-and-link instructions
+    COMM_TYPE_CSR,  // commit to CSRs
+    COMM_TYPE_FENCE,  // commit fence instructions
+    COMM_TYPE_ECALL,  // commit ECALL instructions
     COMM_TYPE_EBREAK,  // commit EBREAK instructions
-    COMM_TYPE_MRET,    // commit MRET instructions
-    COMM_TYPE_WFI,     // commit wait for interrupt instructions
-    COMM_TYPE_EXCEPT   // handle exceptions
+    COMM_TYPE_MRET,  // commit MRET instructions
+    COMM_TYPE_WFI,  // commit wait for interrupt instructions
+    COMM_TYPE_EXCEPT  // handle exceptions
   } comm_type_t;
 
   // rd MUX and adder control
@@ -308,6 +409,7 @@ MAX_EU_N
     COMM_CSR_SEL_PC,      // select PC of the current instruction
     COMM_CSR_SEL_EXCEPT,  // select exception data
     COMM_CSR_SEL_INT,     // select interrupt data
+    COMM_CSR_SEL_FP,      // select floating-point flags data
     COMM_CSR_SEL_ZERO     // 'h0
   } comm_csr_sel_t;
 
@@ -315,6 +417,7 @@ MAX_EU_N
   typedef enum logic [2:0] {
     COMM_CSR_INSTR_TYPE_NONE,  // not committing any instruction
     COMM_CSR_INSTR_TYPE_INT,  // committing generic integer instruction
+    COMM_CSR_INSTR_TYPE_FP,  // committing generic floating-point instruction
     COMM_CSR_INSTR_TYPE_LOAD,  // committing load instruction
     COMM_CSR_INSTR_TYPE_STORE,  // committing store instruction
     COMM_CSR_INSTR_TYPE_JUMP,  // committing jump instruction

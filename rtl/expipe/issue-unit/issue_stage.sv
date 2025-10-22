@@ -9,8 +9,9 @@
 // specific language governing permissions and limitations under the License.
 //
 // File: issue_stage.sv
-// Author: Michele Caon
+// Author: Michele Caon, Flavia Guella
 // Date: 17/11/2021
+
 module issue_stage (
   // Clock, reset, and flush
   input logic clk_i,
@@ -43,30 +44,37 @@ module issue_stage (
   output logic [len5_pkg::REG_IDX_LEN-1:0] intrf_rs1_idx_o,    // RF address of the first operand
   output logic [len5_pkg::REG_IDX_LEN-1:0] intrf_rs2_idx_o,    // RF address of the second operand
 
-  // // Floating-point register status register
-  // output  logic                   fp_regstat_valid_o,
-  // input   logic                   fp_regstat_rs1_busy_i,     // rs1 value is in the ROB or has to be computed
-  // input   rob_idx_t               fp_regstat_rs1_rob_idx_i,  // the index of the ROB where the result is found
-  // input   logic                   fp_regstat_rs2_busy_i,     // rs1 value is in the ROB or has to be computed
-  // input   rob_idx_t               fp_regstat_rs2_rob_idx_i,  // the index of the ROB where the result is found
-  // output  logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rd_idx_o,       // destination register of the issuing instruction
-  // output  rob_idx_t               fp_regstat_rob_idx_o,      // allocated ROB index
-  // output  logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rs1_idx_o,      // first source register index
-  // output  logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rs2_idx_o,      // second source register index
+  // Floating-point register status register
+  output logic fp_regstat_valid_o,
+  input logic fp_regstat_rs1_busy_i,  // rs1 value is in the ROB or has to be computed
+  input expipe_pkg::rob_idx_t fp_regstat_rs1_rob_idx_i,  // the index of the ROB where the result is found
+  input logic fp_regstat_rs2_busy_i,  // rs2 value is in the ROB or has to be computed
+  input expipe_pkg::rob_idx_t fp_regstat_rs2_rob_idx_i,  // the index of the ROB where the result is found
+  input logic fp_regstat_rs3_busy_i,  // rs3 value is in the ROB or has to be computed
+  input expipe_pkg::rob_idx_t fp_regstat_rs3_rob_idx_i,  // the index of the ROB where the result is found
+  output  logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rd_idx_o,       // destination register of the issuing instruction
+  output expipe_pkg::rob_idx_t fp_regstat_rob_idx_o,  // allocated ROB index
+  output logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rs1_idx_o,  // first source register index
+  output logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rs2_idx_o,  // second source register index
+  output logic [len5_pkg::REG_IDX_LEN-1:0] fp_regstat_rs3_idx_o,  // third source register index
 
-  // // Floating-point register file data
-  // input   logic [len5_pkg::XLEN-1:0]        fprf_rs1_value_i,       // value of the first operand
-  // input   logic [len5_pkg::XLEN-1:0]        fprf_rs2_value_i,       // value of the second operand
-  // output  logic [len5_pkg::REG_IDX_LEN-1:0] fprf_rs1_idx_o,         // RF address of the first operand
-  // output  logic [len5_pkg::REG_IDX_LEN-1:0] fprf_rs2_idx_o,         // RF address of the second operand
+  // Floating-point register file data
+  input  logic [       len5_pkg::XLEN-1:0] fprf_rs1_value_i,  // value of the first operand
+  input  logic [       len5_pkg::XLEN-1:0] fprf_rs2_value_i,  // value of the second operand
+  input  logic [       len5_pkg::XLEN-1:0] fprf_rs3_value_i,  // value of the third operand
+  output logic [len5_pkg::REG_IDX_LEN-1:0] fprf_rs1_idx_o,    // RF address of the first operand
+  output logic [len5_pkg::REG_IDX_LEN-1:0] fprf_rs2_idx_o,    // RF address of the second operand
+  output logic [len5_pkg::REG_IDX_LEN-1:0] fprf_rs3_idx_o,    // RF address of the third operand
 
   // Execution pipeline
   input logic [len5_config_pkg::MAX_EU_N-1:0] ex_ready_i,  // ready signal from each reservation station
   input logic ex_mis_i,  // misprediction from the branch unit
   output logic [len5_config_pkg::MAX_EU_N-1:0] ex_valid_o,  // valid signal to each reservation station
   output expipe_pkg::eu_ctl_t ex_eu_ctl_o,  // controls for the associated EU
+  output logic [csr_pkg::FCSR_FRM_LEN-1:0] ex_frm_o,  // rounding mode for the FPU
   output expipe_pkg::op_data_t ex_rs1_o,
   output expipe_pkg::op_data_t ex_rs2_o,
+  output expipe_pkg::op_data_t ex_rs3_o,  //TODO: include this as an input in the exe stage and manage it
   output logic [len5_pkg::XLEN-1:0] ex_imm_value_o,  // the value of the immediate field (for st and branches)
   output expipe_pkg::rob_idx_t ex_rob_idx_o,  // the location of the ROB assigned to the instruction
   output logic [len5_pkg::XLEN-1:0] ex_curr_pc_o,  // the PC of the current issuing instr (branches only)
@@ -85,6 +93,10 @@ module issue_stage (
   output expipe_pkg::rob_idx_t comm_rs2_rob_idx_o,
   input logic comm_rs2_ready_i,
   input logic [len5_pkg::XLEN-1:0] comm_rs2_value_i,
+  //Commit stage, third operand management
+  output expipe_pkg::rob_idx_t comm_rs3_rob_idx_o,
+  input logic comm_rs3_ready_i,
+  input logic [len5_pkg::XLEN-1:0] comm_rs3_value_i,
 
   // CSRs
   input csr_pkg::csr_priv_t csr_priv_mode_i  // current privilege mode
@@ -98,46 +110,48 @@ module issue_stage (
   // ----------------
   // Issue register data type
   typedef struct packed {
-    logic [XLEN-1:0]        curr_pc;
-    instr_t                 instr;
-    logic                   skip_eu;
-    issue_eu_t              assigned_eu;
-    logic                   rs1_req;
-    logic [REG_IDX_LEN-1:0] rs1_idx;
-    logic                   rs1_is_pc;
-    logic                   rs2_req;
-    logic [REG_IDX_LEN-1:0] rs2_idx;
-    logic                   rs2_is_imm;
-    logic [XLEN-1:0]        imm_value;
-    logic [REG_IDX_LEN-1:0] rd_idx;
-    logic                   rd_upd;
-    eu_ctl_t                eu_ctl;
-    logic                   mem_crit;
-    logic                   order_crit;
-    logic                   pred_taken;
-    logic [XLEN-1:0]        pred_target;
-    logic                   except_raised;
-    except_code_t           except_code;
+    logic [XLEN-1:0]                  curr_pc;
+    instr_t                           instr;
+    logic                             skip_eu;
+    issue_eu_t                        assigned_eu;
+    rs1_sel_t                         rs1_sel;
+    logic [REG_IDX_LEN-1:0]           rs1_idx;
+    rs2_sel_t                         rs2_sel;
+    logic [REG_IDX_LEN-1:0]           rs2_idx;
+    rs3_sel_t                         rs3_sel;
+    logic [REG_IDX_LEN-1:0]           rs3_idx;
+    logic [XLEN-1:0]                  imm_value;
+    logic [REG_IDX_LEN-1:0]           rd_idx;
+    logic                             rd_upd;
+    eu_ctl_t                          eu_ctl;
+    logic [csr_pkg::FCSR_FRM_LEN-1:0] frm;
+    logic                             mem_crit;
+    logic                             order_crit;
+    logic                             pred_taken;
+    logic [XLEN-1:0]                  pred_target;
+    logic                             except_raised;
+    except_code_t                     except_code;
   } issue_reg_t;
 
   // Instruction data
-  logic [REG_IDX_LEN-1:0] instr_rs1_idx, instr_rs2_idx, instr_rd_idx;
-  logic      [XLEN-1:0] instr_imm_i_value;
-  logic      [XLEN-1:0] instr_imm_s_value;
-  logic      [XLEN-1:0] instr_imm_b_value;
-  logic      [XLEN-1:0] instr_imm_u_value;
-  logic      [XLEN-1:0] instr_imm_j_value;
-  logic      [XLEN-1:0] instr_imm_rs1_value;  // for CSR immediate instr.
-  logic      [XLEN-1:0] imm_value;  // selected immediate
+  logic [REG_IDX_LEN-1:0] instr_rs1_idx, instr_rs2_idx, instr_rs3_idx, instr_rd_idx;
+  logic      [FUNCT3_LEN-1:0] instr_frm;
+  logic      [      XLEN-1:0] instr_imm_i_value;
+  logic      [      XLEN-1:0] instr_imm_s_value;
+  logic      [      XLEN-1:0] instr_imm_b_value;
+  logic      [      XLEN-1:0] instr_imm_u_value;
+  logic      [      XLEN-1:0] instr_imm_j_value;
+  logic      [      XLEN-1:0] instr_imm_rs1_value;  // for CSR immediate instr.
+  logic      [      XLEN-1:0] imm_value;  // selected immediate
 
   // Fetch stage <--> issue queue
-  iq_entry_t            new_instr;
+  iq_entry_t                  new_instr;
 
   // Issue queue <--> issuing instruction register
-  iq_entry_t            iq_data_out;
+  iq_entry_t                  iq_data_out;
 
   // Issuing instruction registers
-  logic                 ireg_en;
+  logic                       ireg_en;
   issue_reg_t ireg_data_in, ireg_data_out;
 
   // Issue decoderc <--> issue stage
@@ -148,12 +162,10 @@ module issue_stage (
   eu_ctl_t                     id_eu_ctl;
   logic                        id_mem_crit;
   logic                        id_order_crit;
-  logic                        id_rs1_req;
-  logic                        id_rs1_is_pc;
-  logic                        id_rs2_req;
-  logic                        id_rs2_is_imm;
+  rs1_sel_t                    id_rs1_sel;
+  rs2_sel_t                    id_rs2_sel;
+  rs3_sel_t                    id_rs3_sel;
   logic                        id_rd_upd;
-  // logic               id_rs3_req;
   imm_format_t                 id_imm_format;
 
   // Issue queue <--> issue logic
@@ -173,9 +185,9 @@ module issue_stage (
   logic         [MAX_EU_N-1:0] ex_valid;
 
   // Operand fetch
-  rob_idx_t rs1_rob_idx, rs2_rob_idx;
-  logic rs1_ready, rs2_ready;
-  logic [XLEN-1:0] rs1_value, rs2_value;
+  rob_idx_t rs1_rob_idx, rs2_rob_idx, rs3_rob_idx;
+  logic rs1_ready, rs2_ready, rs3_ready;
+  logic [XLEN-1:0] rs1_value, rs2_value, rs3_value;
 
   // -------
   // MODULES
@@ -227,12 +239,10 @@ module issue_stage (
     .eu_ctl_o     (id_eu_ctl),
     .mem_crit_o   (id_mem_crit),
     .order_crit_o (id_order_crit),
-    .rs1_req_o    (id_rs1_req),
-    .rs1_is_pc_o  (id_rs1_is_pc),
-    .rs2_req_o    (id_rs2_req),
-    .rs2_is_imm_o (id_rs2_is_imm),
+    .rs1_sel_o    (id_rs1_sel),
+    .rs2_sel_o    (id_rs2_sel),
+    .rs3_sel_o    (id_rs3_sel),
     .rd_upd_o     (id_rd_upd),
-    // .rs3_req_o     (id_rs3_req               ),
     .imm_format_o (id_imm_format)
   );
 
@@ -269,6 +279,13 @@ module issue_stage (
   };
   assign instr_imm_rs1_value = {59'h0, iq_data_out.instruction.r.rs1};
 
+  // RV64F-RV64D
+  // rounding mode
+  assign instr_frm = iq_data_out.instruction.r4.funct3;
+
+  // rs3 idx, R4 format
+  assign instr_rs3_idx = iq_data_out.instruction.r4.rs3;
+
   // Immediate MUX
   always_comb begin : imm_mux
     unique case (id_imm_format)
@@ -291,12 +308,12 @@ module issue_stage (
   assign ireg_data_in.instr = iq_data_out.instruction;
   assign ireg_data_in.skip_eu = id_skip_eu;
   assign ireg_data_in.assigned_eu = id_assigned_eu;
-  assign ireg_data_in.rs1_req = id_rs1_req;
+  assign ireg_data_in.rs1_sel = id_rs1_sel;
   assign ireg_data_in.rs1_idx = instr_rs1_idx;
-  assign ireg_data_in.rs1_is_pc = id_rs1_is_pc;
-  assign ireg_data_in.rs2_req = id_rs2_req;
+  assign ireg_data_in.rs2_sel = id_rs2_sel;
   assign ireg_data_in.rs2_idx = instr_rs2_idx;
-  assign ireg_data_in.rs2_is_imm = id_rs2_is_imm;
+  assign ireg_data_in.rs3_sel = id_rs3_sel;
+  assign ireg_data_in.rs3_idx = instr_rs3_idx;
   assign ireg_data_in.imm_value = imm_value;
   assign ireg_data_in.rd_idx = instr_rd_idx;
   assign ireg_data_in.rd_upd = id_rd_upd;
@@ -307,6 +324,7 @@ module issue_stage (
   assign ireg_data_in.pred_target = iq_data_out.pred_target;
   assign ireg_data_in.except_raised  = iq_data_out.except_raised | (id_cu_issue_type == ISSUE_TYPE_EXCEPT);
   assign ireg_data_in.except_code    = (iq_data_out.except_raised) ? iq_data_out.except_code : id_except_code;
+  assign ireg_data_in.frm = instr_frm;
 
   // Issue register
   always_ff @(posedge clk_i or negedge rst_ni) begin : issue_reg
@@ -341,7 +359,7 @@ module issue_stage (
     .ex_mis_i           (ex_mis_i),
     .ex_valid_o         (cu_il_ex_valid),
     .int_regstat_valid_o(int_regstat_valid_o),
-    // .fp_regstat_valid_o   (fp_regstat_valid_o     ),
+    .fp_regstat_valid_o (fp_regstat_valid_o),
     .comm_ready_i       (comm_ready_i),
     .comm_valid_o       (comm_valid_o),
     .comm_resume_i      (comm_resume_i)
@@ -362,100 +380,119 @@ module issue_stage (
   // 4) Commit stage buffer 0 (spill register)
   // 5) Commit stage buffer 1
   // 6) Commit stage committing instruction buffer
-  // 7) Register file(s) -- oldest
+  // 7) Register file -- oldest
 
   // Select the correct integer/floating point register status register
-  // assign  rs1_rob_idx     = (fp_regstat_valid_o) ? fp_regstat_rs1_rob_idx_i : int_regstat_rs1_rob_idx_i;
-  // assign  rs2_rob_idx     = (fp_regstat_valid_o) ? fp_regstat_rs2_rob_idx_i : int_regstat_rs2_rob_idx_i;
-  assign rs1_rob_idx = int_regstat_rs1_rob_idx_i;
-  assign rs2_rob_idx = int_regstat_rs2_rob_idx_i;
+  assign rs1_rob_idx = (ireg_data_out.rs1_sel == RS1_SEL_FP) ? fp_regstat_rs1_rob_idx_i : int_regstat_rs1_rob_idx_i;
+  assign rs2_rob_idx = (ireg_data_out.rs2_sel == RS2_SEL_FP) ? fp_regstat_rs2_rob_idx_i : int_regstat_rs2_rob_idx_i;
+  assign rs3_rob_idx = fp_regstat_rs3_rob_idx_i;
 
-  always_comb begin : operand_fetch_logic
-    // Default values
-    rs1_ready = 1'b0;
-    rs2_ready = 1'b0;
-    rs1_value = '0;
-    rs2_value = '0;
-
-    /* INTEGER OPERANDS */
-    // if (id_cu_issue_type != ISSUE_TYPE_FP) begin
-
-    // Fetch rs1
-    if (ireg_data_out.rs1_is_pc) begin
-      rs1_ready = 1'b1;
-      rs1_value = ireg_data_out.curr_pc;
-    end else if (ireg_data_out.rs1_req) begin  // rs1 value is required
-      if (int_regstat_rs1_busy_i) begin  // the operand is provided by an in-flight instr.
-        if (comm_rs1_ready_i) begin  // forward the operand from commit stage (CDB, ROB, etc.)
+  // Fetch rs1
+  always_comb begin : fetch_rs1
+    unique case (ireg_data_out.rs1_sel)
+      RS1_SEL_INT: begin
+        if (int_regstat_rs1_busy_i) begin  // the operand is provided by an in-flight instr.
+          if (comm_rs1_ready_i) begin  // forward the operand from commit stage (CDB, ROB, etc.)
+            rs1_ready = 1'b1;
+            rs1_value = comm_rs1_value_i;
+          end else begin  // not yet available (forwarding happens in RS)
+            rs1_ready = 1'b0;
+            rs1_value = '0;
+          end
+        end else begin  // the operand is available in the register file
           rs1_ready = 1'b1;
-          rs1_value = comm_rs1_value_i;
-        end else begin  /* mark as not ready */
-          rs1_ready = 1'b0;
-          rs1_value = '0;
+          rs1_value = intrf_rs1_value_i;
         end
-      end else begin  // the operand is available in the register file
+      end
+      RS1_SEL_FP: begin
+        if (fp_regstat_rs1_busy_i) begin  // provided by in-flight instruction
+          if (comm_rs1_ready_i) begin  // forward from commit (CDB, ROB, etc.)
+            rs1_ready = 1'b1;
+            rs1_value = comm_rs1_value_i;
+          end else begin  // not yet available (forwarding happens in RS)
+            rs1_ready = 1'b0;
+            rs1_value = '0;
+          end
+        end else begin  // available in the register file
+          rs1_ready = 1'b1;
+          rs1_value = fprf_rs1_value_i;
+        end
+      end
+      RS1_SEL_PC: begin  // rs1 is the program counter
         rs1_ready = 1'b1;
-        rs1_value = intrf_rs1_value_i;
+        rs1_value = ireg_data_out.curr_pc;
       end
-    end else rs1_ready = ~ireg_data_out.rs1_req;
+      default: begin  // RS1_SEL_NONE
+        rs1_ready = 1'b1;
+        rs1_value = '0;
+      end
+    endcase
+  end
 
-    // Fetch rs2
-    if (ireg_data_out.rs2_is_imm) begin
-      rs2_ready = 1'b1;
-      rs2_value = ireg_data_out.imm_value;
-    end else if (ireg_data_out.rs2_req) begin  // rs2 value is required
-      if (int_regstat_rs2_busy_i) begin  // the operand is provided by an in-flight instr.
-        if (comm_rs2_ready_i) begin  // forward the operand from commit stage (CDB, ROB, etc.)
+  // Fetch rs2
+  always_comb begin : fetch_rs2
+    unique case (ireg_data_out.rs2_sel)
+      RS2_SEL_INT: begin
+        if (int_regstat_rs2_busy_i) begin  // the operand is provided by an in-flight instr.
+          if (comm_rs2_ready_i) begin  // forward the operand from commit stage (CDB, ROB, etc.)
+            rs2_ready = 1'b1;
+            rs2_value = comm_rs2_value_i;
+          end else begin  // not yet available (forwarding happens in RS)
+            rs2_ready = 1'b0;
+            rs2_value = '0;
+          end
+        end else begin  // the operand is available in the register file
           rs2_ready = 1'b1;
-          rs2_value = comm_rs2_value_i;
-        end else begin  /* mark as not ready */
-          rs2_ready = 1'b0;
-          rs2_value = 0;
+          rs2_value = intrf_rs2_value_i;
         end
-      end else begin  // the operand is available in the register file
-        rs2_ready = 1'b1;
-        rs2_value = intrf_rs2_value_i;
       end
-    end else rs2_ready = ~ireg_data_out.rs2_req;
+      RS2_SEL_FP: begin
+        if (fp_regstat_rs2_busy_i) begin  // provided by in-flight instruction
+          if (comm_rs2_ready_i) begin  // forward from commit (CDB, ROB, etc.)
+            rs2_ready = 1'b1;
+            rs2_value = comm_rs2_value_i;
+          end else begin  // not yet available (forwarding happens in RS)
+            rs2_ready = 1'b0;
+            rs2_value = '0;
+          end
+        end else begin  // available in the register file
+          rs2_ready = 1'b1;
+          rs2_value = fprf_rs2_value_i;
+        end
+      end
+      RS2_SEL_IMM: begin  // rs1 is immediate
+        rs2_ready = 1'b1;
+        rs2_value = ireg_data_out.imm_value;
+      end
+      default: begin  // RS2_SEL_NONE
+        rs2_ready = 1'b1;
+        rs2_value = '0;
+      end
+    endcase
+  end
 
-    /* FLOATING-POINT OPERANDS */
-    // end else begin
-
-    //     // Fetch rs1
-    //     if (ireg_data_out.rs1_req) begin               // rs1 value is required
-    //         if (fp_regstat_rs1_busy_i) begin   // the operand is provided by an in-flight instr.
-    //             if (comm_rs1_ready_i) begin // forward the operand from commit stage (CDB, ROB, etc.)
-    //                 rs1_ready   = 1'b1;
-    //                 rs1_value   = comm_rs1_value_i;
-    //             end else begin /* mark as not ready */
-    //                 rs1_ready   = 1'b0;
-    //                 rs1_value   = 0;
-    //             end
-    //         end else begin                  // the operand is available in the register file
-    //             rs1_ready           = 1'b1;
-    //             rs1_value           = fprf_rs1_value_i;
-    //         end
-    //     end else rs1_ready = ~ireg_data_out.rs1_req;
-
-    //     // Fetch rs2
-    //     if (ireg_data_out.rs2_req) begin               // rs2 value is required
-    //         if (fp_regstat_rs2_busy_i) begin   // the operand is provided by an in-flight instr.
-    //             if (comm_rs2_ready_i) begin // forward the operand from commit stage (CDB, ROB, etc.)
-    //                 rs2_ready   = 1'b1;
-    //                 rs2_value   = comm_rs2_value_i;
-    //             end else begin /* mark as not ready */
-    //                 rs2_ready   = 1'b0;
-    //                 rs2_value   = 0;
-    //             end
-    //         end else begin                  // the operand is available in the register file
-    //             rs2_ready           = 1'b1;
-    //             rs2_value           = fprf_rs2_value_i;
-    //         end
-    //     end else rs2_ready = ~ireg_data_out.rs2_req;
-
-    //     // Fetch rs3
-    //     // ADD RS3 TO FP RF AND RS
-    // end
+  // Fetch rs3
+  always_comb begin : fetch_rs3
+    unique case (ireg_data_out.rs3_sel)
+      RS3_SEL_FP: begin
+        if (fp_regstat_rs3_busy_i) begin  // provided by in-flight instruction
+          if (comm_rs3_ready_i) begin  // forward from commit (CDB, ROB, etc.)
+            rs3_ready = 1'b1;
+            rs3_value = comm_rs3_value_i;
+          end else begin  // not yet available (forwarding happens in RS)
+            rs3_ready = 1'b0;
+            rs3_value = '0;
+          end
+        end else begin  // available in the register file
+          rs3_ready = 1'b1;
+          rs3_value = fprf_rs3_value_i;
+        end
+      end
+      default: begin  // RS3_SEL_NONE
+        rs3_ready = 1'b1;
+        rs3_value = '0;
+      end
+    endcase
   end
 
   // -----------------
@@ -475,25 +512,31 @@ module issue_stage (
   assign intrf_rs1_idx_o           = ireg_data_out.rs1_idx;
   assign intrf_rs2_idx_o           = ireg_data_out.rs2_idx;
 
-  // // Data to the floating-point register status register
-  // assign  fp_regstat_rs1_idx_o    = ireg_data_out.rs1_idx;
-  // assign  fp_regstat_rs2_idx_o    = ireg_data_out.rs2_idx;
-  // assign  fp_regstat_rd_idx_o     = ireg_data_out.rd_idx;
-  // assign  fp_regstat_rob_idx_o    = comm_tail_idx_i;
+  // Data to the floating-point register status register
+  assign fp_regstat_rs1_idx_o      = ireg_data_out.rs1_idx;
+  assign fp_regstat_rs2_idx_o      = ireg_data_out.rs2_idx;
+  assign fp_regstat_rs3_idx_o      = ireg_data_out.rs3_idx;
+  assign fp_regstat_rd_idx_o       = ireg_data_out.rd_idx;
+  assign fp_regstat_rob_idx_o      = comm_tail_idx_i;
 
-  // // Data to the floating-point register file
-  // assign  fprf_rs1_idx_o          = ireg_data_out.rs1_idx;
-  // assign  fprf_rs2_idx_o          = ireg_data_out.rs2_idx;
+  // Data to the floating-point register file
+  assign fprf_rs1_idx_o            = ireg_data_out.rs1_idx;
+  assign fprf_rs2_idx_o            = ireg_data_out.rs2_idx;
+  assign fprf_rs3_idx_o            = ireg_data_out.rs3_idx;
 
   // Data to the execution pipeline
   assign ex_valid_o                = ex_valid;
   assign ex_eu_ctl_o               = ireg_data_out.eu_ctl;
+  assign ex_frm_o                  = ireg_data_out.frm;
   assign ex_rs1_o.ready            = rs1_ready;
   assign ex_rs1_o.rob_idx          = rs1_rob_idx;
   assign ex_rs1_o.value            = rs1_value;
   assign ex_rs2_o.ready            = rs2_ready;
   assign ex_rs2_o.rob_idx          = rs2_rob_idx;
   assign ex_rs2_o.value            = rs2_value;
+  assign ex_rs3_o.ready            = rs3_ready;
+  assign ex_rs3_o.rob_idx          = rs3_rob_idx;
+  assign ex_rs3_o.value            = rs3_value;
   assign ex_imm_value_o            = ireg_data_out.imm_value;
   assign ex_rob_idx_o              = comm_tail_idx_i;
   assign ex_curr_pc_o              = ireg_data_out.curr_pc;
@@ -512,8 +555,10 @@ module issue_stage (
   assign comm_data_o.except_raised = ireg_data_out.except_raised;
   assign comm_data_o.except_code   = ireg_data_out.except_code;
   assign comm_data_o.mem_clear     = 1'b0;
+  assign comm_data_o.flags.raw     = '0;
   assign comm_rs1_rob_idx_o        = rs1_rob_idx;
   assign comm_rs2_rob_idx_o        = rs2_rob_idx;
+  assign comm_rs3_rob_idx_o        = rs3_rob_idx;
 
   // ----------
   // DEBUG CODE

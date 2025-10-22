@@ -102,7 +102,7 @@ module arith_rs #(
   // ----------------
   // New, execution, and CDB write pointers
   logic [RsIdxLen-1:0] new_idx, ex_idx, cdb_idx;
-  logic [DEPTH-1:0] empty, ready_ex, ready_cdb;
+  logic [DEPTH-1:0] ready_ex, ready_cdb;
 
   // Arithmetic reservation station data
   arith_rs_data_t [DEPTH-1:0] data;
@@ -119,7 +119,7 @@ module arith_rs #(
   // Ready signals for the selectors
   always_comb begin : p_enc_signals
     foreach (curr_state[i]) begin
-      empty[i]     = curr_state[i] == ARITH_S_EMPTY;
+      //empty[i]     = curr_state[i] == ARITH_S_EMPTY;
       ready_ex[i]  = curr_state[i] == ARITH_S_EX_REQ;
       ready_cdb[i] = curr_state[i] == ARITH_S_COMPLETED;
     end
@@ -335,6 +335,7 @@ module arith_rs #(
   assign cdb_data_o.res_value     = data[cdb_idx].res_value;
   assign cdb_data_o.except_raised = data[cdb_idx].except_raised;
   assign cdb_data_o.except_code   = data[cdb_idx].except_code;
+  assign cdb_data_o.flags.raw     = '0;  // no flags set
 
   // Execution unit
   assign eu_ready_o               = 1'b1;
@@ -349,13 +350,24 @@ module arith_rs #(
   // NOTE: round-robin arbiters mitigate starvation at increased area cost
 
   // New entry
-  prio_enc #(
+  modn_counter #(
     .N(DEPTH)
   ) new_sel (
-    .lines_i(empty),
-    .enc_o  (new_idx),
-    .valid_o()
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
+    .en_i   (insert),
+    .clr_i  (flush_i),
+    .count_o(new_idx),
+    .tc_o   ()          // not needed
   );
+
+  // prio_enc #(
+  //   .N(DEPTH)
+  // ) new_sel (
+  //   .lines_i(empty),
+  //   .enc_o  (new_idx),
+  //   .valid_o()
+  // );
 
   generate
     if (RR_ARBITER) begin : gen_rr_arbiters
@@ -369,7 +381,7 @@ module arith_rs #(
         .valid_i (ready_ex),
         .ready_o (),            // eu_ready_i used instead
         .valid_o (eu_valid_o),
-        .ready_i (1'b1),
+        .ready_i (eu_ready_i),
         .served_o(ex_idx)
       );
 
@@ -383,7 +395,7 @@ module arith_rs #(
         .valid_i (ready_cdb),
         .ready_o (),             // cdb_ready_i used instead
         .valid_o (cdb_valid_o),
-        .ready_i (1'b1),
+        .ready_i (cdb_ready_i),
         .served_o(cdb_idx)
       );
     end else begin : gen_prio_arbiters

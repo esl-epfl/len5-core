@@ -1,0 +1,29 @@
+// Copyright 2022 OpenHW Group
+// Solderpad Hardware License, Version 2.1, see LICENSE.md for details.
+// SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+{
+  name: "dummy_accelerator",
+  target_dir: "dummy_accelerator",
+
+  upstream: {
+    url: "https://github.com/flague/dummy_accelerator.git",
+    rev: "de81ba2b9aebf8c80c916f3f1afed1714e78d9cb", #feat-pipeline branch
+  },
+  patch_dir: "patches/dummy_accelerator",
+
+  exclude_from_upstream: [
+    ".gitignore",
+    ".gitmodules",
+    "CITATION.cff",
+    "README.md",
+    "tb",
+    "ips_list.yml",
+    "src_files.yml"
+    "docs"
+    "util"
+    "vendor/opene906.lock.hjson"
+    "vendor/opene906.vendor.hjson"
+    "vendor/opene906/README.md"
+    "vendor/patches"
+  ]
+}

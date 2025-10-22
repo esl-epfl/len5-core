@@ -101,33 +101,36 @@ module backend (
 
   // Issue logic <--> floating-point register status register
   // --------------------------------------------------------
-  // logic                       fp_regstat_il_ready;
-  // logic                       il_fp_regstat_valid;
-  // logic                       fp_regstat_il_rs1_busy;
-  // rob_idx_t                   fp_regstat_il_rs1_rob_idx;
-  // logic                       fp_regstat_il_rs2_busy;
-  // rob_idx_t                   fp_regstat_il_rs2_rob_idx;
-  // logic     [REG_IDX_LEN-1:0] il_fp_regstat_rd_idx;
-  // rob_idx_t                   il_fp_regstat_rob_idx;
-  // logic     [REG_IDX_LEN-1:0] il_fp_regstat_rs1_idx;
-  // logic     [REG_IDX_LEN-1:0] il_fp_regstat_rs2_idx;
+  logic                                 il_fp_regstat_valid;
+  logic                                 fp_regstat_il_rs1_busy;
+  rob_idx_t                             fp_regstat_il_rs1_rob_idx;
+  logic                                 fp_regstat_il_rs2_busy;
+  rob_idx_t                             fp_regstat_il_rs2_rob_idx;
+  logic                                 fp_regstat_il_rs3_busy;
+  rob_idx_t                             fp_regstat_il_rs3_rob_idx;
+  logic            [   REG_IDX_LEN-1:0] il_fp_regstat_rd_idx;
+  rob_idx_t                             il_fp_regstat_rob_idx;
+  logic            [   REG_IDX_LEN-1:0] il_fp_regstat_rs1_idx;
+  logic            [   REG_IDX_LEN-1:0] il_fp_regstat_rs2_idx;
+  logic            [   REG_IDX_LEN-1:0] il_fp_regstat_rs3_idx;
 
   // Floating-point register status register <--> commit logic
   // ---------------------------------------------------------
-  // logic                       comm_fprs_valid;
+  logic                                 comm_fprs_valid;
   // logic                       fp_regstat_comm_ready;
 
   // Issue logic <--> floating-point register file
   // ---------------------------------------------
-  // logic     [       XLEN-1:0] fprf_il_rs1_value;
-  // logic     [       XLEN-1:0] fprf_il_rs2_value;
-  // logic     [REG_IDX_LEN-1:0] il_fprf_rs1_idx;
-  // logic     [REG_IDX_LEN-1:0] il_fprf_rs2_idx;
+  logic            [          XLEN-1:0] fprf_il_rs1_value;
+  logic            [          XLEN-1:0] fprf_il_rs2_value;
+  logic            [          XLEN-1:0] fprf_il_rs3_value;
+  logic            [   REG_IDX_LEN-1:0] il_fprf_rs1_idx;
+  logic            [   REG_IDX_LEN-1:0] il_fprf_rs2_idx;
+  logic            [   REG_IDX_LEN-1:0] il_fprf_rs3_idx;
 
   // // Floating-point register file <--> commit logic
   // // ----------------------------------------------
-  // logic                       comm_fprf_valid;
-  // logic                       fprf_comm_ready;
+  logic                                 comm_fprf_valid;
 
   // Issue Stage <--> Commit Stage
   // -----------------------------
@@ -142,6 +145,9 @@ module backend (
   rob_idx_t                             issue_comm_rs2_rob_idx;
   logic                                 comm_issue_rs2_ready;
   logic            [          XLEN-1:0] comm_issue_rs2_value;
+  rob_idx_t                             issue_comm_rs3_rob_idx;
+  logic                                 comm_issue_rs3_ready;
+  logic            [          XLEN-1:0] comm_issue_rs3_value;
 
   // Issue stage <--> execution units
   // --------------------------------
@@ -149,8 +155,10 @@ module backend (
   logic                                 ex_issue_mis;
   logic            [      MAX_EU_N-1:0] il_ex_valid;
   logic            [MAX_EU_CTL_LEN-1:0] issue_ex_eu_ctl;
+  logic            [  FCSR_FRM_LEN-1:0] issue_ex_frm;
   op_data_t                             issue_ex_rs1;
   op_data_t                             issue_ex_rs2;
+  op_data_t                             issue_ex_rs3;
   logic            [          XLEN-1:0] issue_ex_imm_value;
   rob_idx_t                             issue_ex_rob_idx;
   logic            [          XLEN-1:0] issue_ex_curr_pc;
@@ -174,7 +182,7 @@ module backend (
 
   // Execution stage <--> CSRs
   // -------------------------
-  //logic            [  FCSR_FRM_LEN-1:0] csr_ex_frm;
+  logic            [  FCSR_FRM_LEN-1:0] csr_ex_frm;
 
   // CDB <--> commit stage
   // ---------------------
@@ -248,27 +256,34 @@ module backend (
     .intrf_rs1_idx_o  (il_intrf_rs1_idx),
     .intrf_rs2_idx_o  (il_intrf_rs2_idx),
 
-    // .fp_regstat_valid_o      (il_fp_regstat_valid),
-    // .fp_regstat_rs1_busy_i   (fp_regstat_il_rs1_busy),
-    // .fp_regstat_rs1_rob_idx_i(fp_regstat_il_rs1_rob_idx),
-    // .fp_regstat_rs2_busy_i   (fp_regstat_il_rs2_busy),
-    // .fp_regstat_rs2_rob_idx_i(fp_regstat_il_rs2_rob_idx),
-    // .fp_regstat_rd_idx_o     (il_fp_regstat_rd_idx),
-    // .fp_regstat_rob_idx_o    (il_fp_regstat_rob_idx),
-    // .fp_regstat_rs1_idx_o    (il_fp_regstat_rs1_idx),
-    // .fp_regstat_rs2_idx_o    (il_fp_regstat_rs2_idx),
+    .fp_regstat_valid_o      (il_fp_regstat_valid),
+    .fp_regstat_rs1_busy_i   (fp_regstat_il_rs1_busy),
+    .fp_regstat_rs1_rob_idx_i(fp_regstat_il_rs1_rob_idx),
+    .fp_regstat_rs2_busy_i   (fp_regstat_il_rs2_busy),
+    .fp_regstat_rs2_rob_idx_i(fp_regstat_il_rs2_rob_idx),
+    .fp_regstat_rs3_busy_i   (fp_regstat_il_rs3_busy),
+    .fp_regstat_rs3_rob_idx_i(fp_regstat_il_rs3_rob_idx),
+    .fp_regstat_rd_idx_o     (il_fp_regstat_rd_idx),
+    .fp_regstat_rob_idx_o    (il_fp_regstat_rob_idx),
+    .fp_regstat_rs1_idx_o    (il_fp_regstat_rs1_idx),
+    .fp_regstat_rs2_idx_o    (il_fp_regstat_rs2_idx),
+    .fp_regstat_rs3_idx_o    (il_fp_regstat_rs3_idx),
 
-    // .fprf_rs1_value_i(fprf_il_rs1_value),
-    // .fprf_rs2_value_i(fprf_il_rs2_value),
-    // .fprf_rs1_idx_o  (il_fprf_rs1_idx),
-    // .fprf_rs2_idx_o  (il_fprf_rs2_idx),
+    .fprf_rs1_value_i(fprf_il_rs1_value),
+    .fprf_rs2_value_i(fprf_il_rs2_value),
+    .fprf_rs3_value_i(fprf_il_rs3_value),
+    .fprf_rs1_idx_o  (il_fprf_rs1_idx),
+    .fprf_rs2_idx_o  (il_fprf_rs2_idx),
+    .fprf_rs3_idx_o  (il_fprf_rs3_idx),
 
     .ex_ready_i      (ex_issue_ready),
     .ex_mis_i        (ex_issue_mis),
     .ex_valid_o      (il_ex_valid),
     .ex_eu_ctl_o     (issue_ex_eu_ctl),
+    .ex_frm_o        (issue_ex_frm),
     .ex_rs1_o        (issue_ex_rs1),
     .ex_rs2_o        (issue_ex_rs2),
+    .ex_rs3_o        (issue_ex_rs3),
     .ex_imm_value_o  (issue_ex_imm_value),
     .ex_rob_idx_o    (issue_ex_rob_idx),
     .ex_curr_pc_o    (issue_ex_curr_pc),
@@ -286,6 +301,10 @@ module backend (
     .comm_rs2_rob_idx_o(issue_comm_rs2_rob_idx),
     .comm_rs2_ready_i  (comm_issue_rs2_ready),
     .comm_rs2_value_i  (comm_issue_rs2_value),
+    .comm_rs3_rob_idx_o(issue_comm_rs3_rob_idx),
+    .comm_rs3_ready_i  (comm_issue_rs3_ready),
+    .comm_rs3_value_i  (comm_issue_rs3_value),
+
 
     .csr_priv_mode_i(csr_il_priv_mode)
   );
@@ -331,40 +350,63 @@ module backend (
 
   // Floating-point register status register
   // ---------------------------------------
-  // // FP register status register
-  // fp_regstat #(
-  //   .REG_NUM(XREG_NUM)
-  // ) u_fp_regstat (
-  //   .clk_i              (clk_i),
-  //   .rst_ni            (rst_ni),
-  //   .issue_valid_i      (il_fp_regstat_valid),
-  //   .issue_ready_o      (fp_regstat_il_ready),
-  //   .issue_rd_idx_i     (il_fp_regstat_rd_idx),
-  //   .issue_rob_idx_i    (il_fp_regstat_rob_idx),
-  //   .issue_rs1_idx_i    (il_fp_regstat_rs1_idx),
-  //   .issue_rs2_idx_i    (il_fp_regstat_rs2_idx),
-  //   .issue_rs1_busy_o   (fp_regstat_il_rs1_busy),
-  //   .issue_rs1_rob_idx_o(fp_regstat_il_rs1_rob_idx),
-  //   .issue_rs2_busy_o   (fp_regstat_il_rs2_busy),
-  //   .issue_rs2_rob_idx_o(fp_regstat_il_rs2_rob_idx),
-  //   .comm_valid_i       (comm_fprs_valid),
-  //   .comm_rd_idx_i      (comm_rf_rd_idx)
-  // );
+  generate
+    if (LEN5_D_EN | LEN5_F_EN) begin : gen_fp_rf
+      // FP register status register
+      fp_regstat #(
+        .REG_NUM(XREG_NUM)
+      ) u_fp_regstat (
+        .clk_i              (clk_i),
+        .rst_ni             (rst_ni),
+        .flush_i            (ex_mis_flush),
+        .issue_valid_i      (il_fp_regstat_valid),
+        .issue_rd_idx_i     (il_fp_regstat_rd_idx),
+        .issue_rob_idx_i    (il_fp_regstat_rob_idx),
+        .issue_rs1_idx_i    (il_fp_regstat_rs1_idx),
+        .issue_rs2_idx_i    (il_fp_regstat_rs2_idx),
+        .issue_rs3_idx_i    (il_fp_regstat_rs3_idx),
+        .issue_rs1_busy_o   (fp_regstat_il_rs1_busy),
+        .issue_rs1_rob_idx_o(fp_regstat_il_rs1_rob_idx),
+        .issue_rs2_busy_o   (fp_regstat_il_rs2_busy),
+        .issue_rs2_rob_idx_o(fp_regstat_il_rs2_rob_idx),
+        .issue_rs3_busy_o   (fp_regstat_il_rs3_busy),
+        .issue_rs3_rob_idx_o(fp_regstat_il_rs3_rob_idx),
+        .comm_valid_i       (comm_fprs_valid),
+        .comm_rd_idx_i      (comm_rf_rd_idx)
+      );
 
-  // // Floating-point register file
-  // // ----------------------------
-  // fp_rf u_fp_rf (
-  //   .clk_i            (clk_i),
-  //   .rst_ni          (rst_ni),
-  //   .comm_valid_i     (comm_fprf_valid),
-  //   .comm_ready_o     (fprf_comm_ready),
-  //   .comm_rd_idx_i    (comm_rf_rd_idx),
-  //   .comm_rd_value_i  (comm_rf_rd_value),
-  //   .issue_rs1_idx_i  (il_fprf_rs1_idx),
-  //   .issue_rs2_idx_i  (il_fprf_rs2_idx),
-  //   .issue_rs1_value_o(fprf_il_rs1_value),
-  //   .issue_rs2_value_o(fprf_il_rs2_value)
-  // );
+      // Floating-point register file
+      // ----------------------------
+      fp_rf u_fp_rf (
+        .clk_i            (clk_i),
+        .rst_ni           (rst_ni),
+        .comm_valid_i     (comm_fprf_valid),
+        .comm_rd_idx_i    (comm_rf_rd_idx),
+        .comm_rd_value_i  (comm_rf_rd_value[FLEN-1:0]),
+        .issue_rs1_idx_i  (il_fprf_rs1_idx),
+        .issue_rs2_idx_i  (il_fprf_rs2_idx),
+        .issue_rs3_idx_i  (il_fprf_rs3_idx),
+        .issue_rs1_value_o(fprf_il_rs1_value[FLEN-1:0]),
+        .issue_rs2_value_o(fprf_il_rs2_value[FLEN-1:0]),
+        .issue_rs3_value_o(fprf_il_rs3_value[FLEN-1:0])
+      );
+      if (!LEN5_D_EN) begin : gen_f_zero_extension
+        assign fprf_il_rs1_value[XLEN-1:FLEN] = '0;
+        assign fprf_il_rs2_value[XLEN-1:FLEN] = '0;
+        assign fprf_il_rs3_value[XLEN-1:FLEN] = '0;
+      end
+    end else begin : gen_no_fp_rf
+      assign fp_regstat_il_rs1_busy    = 1'b0;
+      assign fp_regstat_il_rs1_rob_idx = '0;
+      assign fp_regstat_il_rs2_busy    = 1'b0;
+      assign fp_regstat_il_rs2_rob_idx = '0;
+      assign fp_regstat_il_rs3_busy    = 1'b0;
+      assign fp_regstat_il_rs3_rob_idx = '0;
+      assign fprf_il_rs1_value         = '0;
+      assign fprf_il_rs2_value         = '0;
+      assign fprf_il_rs3_value         = '0;
+    end
+  endgenerate
 
   // ---------------
   // EXECUTION STAGE
@@ -388,8 +430,10 @@ module backend (
     .issue_valid_i      (il_ex_valid),
     .issue_ready_o      (ex_issue_ready),
     .issue_eu_ctl_i     (issue_ex_eu_ctl),
+    .issue_frm_i        (issue_ex_frm),
     .issue_rs1_i        (issue_ex_rs1),
     .issue_rs2_i        (issue_ex_rs2),
+    .issue_rs3_i        (issue_ex_rs3),
     .issue_imm_value_i  (issue_ex_imm_value),
     .issue_rob_idx_i    (issue_ex_rob_idx),
     .issue_curr_pc_i    (issue_ex_curr_pc),
@@ -405,7 +449,7 @@ module backend (
 
     .comm_sb_mem_idx_o  (sb_comm_mem_idx),
     .comm_sb_mem_clear_i(comm_sb_mem_clear),
-    // .csr_frm_i             (csr_ex_frm),
+    .csr_frm_i          (csr_ex_frm),
 
     .mem_load_valid_o        (mem_load_valid_o),
     .mem_load_ready_i        (mem_load_ready_i),
@@ -478,6 +522,9 @@ module backend (
     .issue_rs2_rob_idx_i(issue_comm_rs2_rob_idx),
     .issue_rs2_ready_o  (comm_issue_rs2_ready),
     .issue_rs2_value_o  (comm_issue_rs2_value),
+    .issue_rs3_rob_idx_i(issue_comm_rs3_rob_idx),
+    .issue_rs3_ready_o  (comm_issue_rs3_ready),
+    .issue_rs3_value_o  (comm_issue_rs3_value),
     .issue_resume_o     (comm_issue_resume),
 
     .cdb_valid_i(cdb_others_valid),
@@ -490,8 +537,8 @@ module backend (
     .int_rs_valid_o(comm_intrs_valid),
     .int_rf_valid_o(comm_intrf_valid),
 
-    // .fp_rs_valid_o(comm_fprs_valid),
-    // .fp_rf_valid_o(comm_fprf_valid),
+    .fp_rs_valid_o(comm_fprs_valid),
+    .fp_rf_valid_o(comm_fprf_valid),
 
     .rd_idx_o  (comm_rf_rd_idx),
     .rd_value_o(comm_rf_rd_value),
@@ -523,7 +570,7 @@ module backend (
     .data_o     (csr_comm_data),
     .mtvec_o    (csr_comm_mtvec),
     .csr_exc_o  (),                    // TODO: handle illegal CSR access exceptions
-    // .fpu_frm_o  (csr_ex_frm),
+    .fpu_frm_o  (csr_ex_frm),
     .priv_mode_o(csr_il_priv_mode)
   );
 

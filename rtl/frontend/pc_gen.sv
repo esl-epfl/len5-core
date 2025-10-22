@@ -85,13 +85,13 @@ module pc_gen #(
   always_ff @(posedge clk_i or negedge rst_ni) begin : pc_reg
     if (!rst_ni) begin
       pc_o <= BOOT_PC;
-    end else if (mem_ready_i || early_jump_valid_i) begin
+    end else if ((bu_res_valid_i && bu_res_i.mispredict) || mem_ready_i || early_jump_valid_i) begin
       pc_o <= next_pc;
     end
   end : pc_reg
 
   // Output valid and ready
   assign valid_o = rst_ni & !(bu_res_valid_i & bu_res_i.mispredict) & !comm_except_raised_i;
-  assign bu_ready_o = mem_ready_i;
+  assign bu_ready_o = 1'b1;
   assign early_jump_target_o = next_pc;
 endmodule
