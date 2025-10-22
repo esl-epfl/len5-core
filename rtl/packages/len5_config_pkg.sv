@@ -127,7 +127,8 @@ package len5_config_pkg;
 
   // Enable floating-point support
   // -----------------------------
-  localparam bit LEN5_FP_EN = 1'b0;
+  localparam bit LEN5_F_EN = 1'b0;
+  localparam bit LEN5_D_EN = 1'b0;
 
   // Enable atomic support
   // ---------------------
