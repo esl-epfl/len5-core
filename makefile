@@ -209,6 +209,13 @@ check-alu: | .check-fusesoc
 		--dump_waves=false \
 		--max_cycles=1000000
 
+# Updated Vendored Files
+# ----------------------
+.PHONY: vendor-update
+vendor-update:
+	@echo "Updating vendored IPs..."
+	find rtl/vendor -type f -name "*.vendor.hjson" -exec ./util/vendor.py -vU {} \;
+
 # Utilities
 # ---------
 # Check if fusesoc is available

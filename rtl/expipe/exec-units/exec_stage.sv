@@ -304,36 +304,4 @@ module exec_stage (
     end
   endgenerate
 
-  // Divider
-  generate
-    if (LEN5_DUMMY_COPR_EN) begin : gen_copr_unit
-      dummy_copr_unit #(
-        .EU_CTL_LEN    (MAX_EU_CTL_LEN),
-        .RS_DEPTH      (DUMMY_COPR_RS_DEPTH),
-        .RR_ARBITER    (DUMMY_COPR_RR_ARBITER),
-        .MAX_LATENCY   (DUMMY_COPR_MAX_LATENCY),
-        .MAX_PIPE_DEPTH(DUMMY_COPR_MAX_PIPE_DEPTH)
-      ) u_dummy_copr_unit (
-        .clk_i               (clk_i),
-        .rst_ni              (rst_ni),
-        .flush_i             (mis_flush_i),
-        .issue_valid_i       (issue_valid_i[EU_DUMMY_COPR]),
-        .issue_ready_o       (issue_ready_o[EU_DUMMY_COPR]),
-        .issue_eu_ctl_i      (issue_eu_ctl_i.copr),
-        .issue_rs1_i         (issue_rs1_i),
-        .issue_rs2_i         (issue_rs2_i),
-        .issue_dest_rob_idx_i(issue_rob_idx_i),
-        .cdb_ready_i         (cdb_ready_i[EU_DUMMY_COPR]),
-        .cdb_valid_i         (cdb_valid_i),
-        .cdb_valid_o         (cdb_valid_o[EU_DUMMY_COPR]),
-        .cdb_data_i          (cdb_data_i),
-        .cdb_data_o          (cdb_data_o[EU_DUMMY_COPR])
-      );
-    end else begin : gen_no_div_unit
-      assign issue_ready_o[EU_DUMMY_COPR] = 1'b0;
-      assign cdb_valid_o[EU_DUMMY_COPR]   = 1'b0;
-      assign cdb_data_o[EU_DUMMY_COPR]    = '0;
-    end
-  endgenerate
-
 endmodule

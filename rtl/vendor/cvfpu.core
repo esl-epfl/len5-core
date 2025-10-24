@@ -39,7 +39,13 @@ filesets:
       - cvfpu/src/fpnew_top.sv
     file_type: systemVerilogSource
 
+  verilator-waivers:
+    files:
+    - misc/cvfpu-waivers.vlt
+    file_type: vlt
+
 targets:
     default:
       filesets:
         - "!target_format ? (rtl)"
+        - tool_verilator ? (verilator-waivers)

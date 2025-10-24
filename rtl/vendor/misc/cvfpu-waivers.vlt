@@ -1,0 +1,22 @@
+// Copyright 2025 Politecnico di Torino and EPFL.
+// Solderpad Hardware License, Version 2.1, see LICENSE.md for details.
+// SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+//
+// File: expipe-waivers.vlt
+// Author:  Michele Caon
+// Date: 24/10/2025
+// Description: Verilator waivers
+
+`verilator_config
+lint_off -rule PINCONNECTEMPTY -file "*/fpnew_divsqrt_th_32.sv" -match "Instance pin connected by name with empty reference: '*'"
+lint_off -rule PINCONNECTEMPTY -file "*/fpnew_opgroup_block.sv" -match "Instance pin connected by name with empty reference: '*'"
+lint_off -rule PINCONNECTEMPTY -file "*/fpnew_top.sv" -match "Instance pin connected by name with empty reference: '*'"
+lint_off -rule PINCONNECTEMPTY -file "*/fifo_comb_ready.sv" -match "Instance pin connected by name with empty reference: '*'"
+lint_off -rule UNUSED -file "*/lzc.sv" -match "Bits of signal are not driven, nor used: 'sel_nodes'[63]"
+lint_off -rule UNUSED -file "*/lzc.sv" -match "Bits of signal are not driven, nor used: 'index_nodes'[383:378]"
+lint_off -rule UNOPTFLAT -file "*/lzc.sv" -match "Signal unoptimizable: Feedback to clock or circular logic: *index_nodes'"
+lint_off -rule UNOPTFLAT -file "*/lzc.sv" -match "Signal unoptimizable: Feedback to clock or circular logic: *sel_nodes'"
+lint_off -rule GENUNNAMED -file "*/fpu-div-sqrt-mvp/hdl/div_sqrt_mvp_wrapper.sv" -match "Unnamed generate block '*'"
+lint_off -rule GENUNNAMED -file "*/fpu-div-sqrt-mvp/hdl/control_mvp.sv" -match "Unnamed generate block '*'"
+lint_off -rule GENUNNAMED -file "*/cvfpu/src/*.sv" -match "Unnamed generate block '*'"
+lint_off -rule ASCRANGE -file "*/cvfpu/src/*.sv" -match "Ascending bit range vector: left < right of bit range: *"

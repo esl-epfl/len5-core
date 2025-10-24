@@ -54,7 +54,7 @@ module tb_bare #(
   string                              mem_file = "firmware.hex";
 
   // Number of cycles to simulate
-  longint unsigned                    curr_cycle = 0;
+  longint unsigned                    curr_cycle;
 
   // Serial monitor
   bit                                 serial_recv;
@@ -64,16 +64,16 @@ module tb_bare #(
   // Exit monitor
   bit                                 exit_code_recv;
   byte                                exit_code_q;
-  bit                                 exit_cnt_en = 1'b0;
+  bit                                 exit_cnt_en;
   int unsigned                        exit_cnt_q;
 
   // Trace logger
   int                                 trace_fd;
 
   // Memory monitor
-  longint unsigned                    num_instr_loads = 0;
-  longint unsigned                    num_data_loads = 0;
-  longint unsigned                    num_data_stores = 0;
+  longint unsigned                    num_instr_loads;
+  longint unsigned                    num_data_loads;
+  longint unsigned                    num_data_stores;
 
   // LEN5 Interface
   len5_data_t                         cpu_data;
@@ -143,7 +143,8 @@ module tb_bare #(
     $display("[TB] M extension: %s", (LEN5_M_EN && LEN5_DIV_EN) ? "YES" : "NO");
 
     // Print FP extension information
-    $display("[TB] D extension: %s", (LEN5_FP_EN) ? "YES" : "NO");
+    $display("[TB] F extension: %s", (LEN5_F_EN) ? "YES" : "NO");
+    $display("[TB] D extension: %s", (LEN5_D_EN) ? "YES" : "NO");
 
 
   end

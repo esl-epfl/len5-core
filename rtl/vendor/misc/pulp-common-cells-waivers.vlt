@@ -1,0 +1,12 @@
+// Copyright 2025 Politecnico di Torino and EPFL.
+// Solderpad Hardware License, Version 2.1, see LICENSE.md for details.
+// SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
+//
+// File: expipe-waivers.vlt
+// Author:  Michele Caon
+// Date: 24/10/2025
+// Description: Verilator waivers
+
+`verilator_config
+lint_off -rule PINCONNECTEMPTY -file "*/pulp-common-cells/src/*.sv" -match "Instance pin connected by name with empty reference: '*'"
+lint_off -rule GENUNNAMED -file "*/pulp-common-cells/src/*.sv" -match "Unnamed generate block '*'"

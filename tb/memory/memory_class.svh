@@ -30,9 +30,9 @@ typedef enum int unsigned {
 
 class memory_class;
   // File info
-  const local string                     memory_file_path;
-  const local int                        fd;
-  const local string                     file_line;
+  const local string               memory_file_path;
+  local int                        fd;
+  local string                     file_line;
 
   // File data
   logic              [ BWIDTH-1:0] read_byte;

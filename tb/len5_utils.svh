@@ -87,7 +87,7 @@ endfunction: tb_len5_get_commit_instr
 
 // Committed instruction dump
 // NOTE: call at every cycle to ensure no instruction is missed
-function void tb_len5_update_commit(bit dump_trace, int fd);
+function static void tb_len5_update_commit(bit dump_trace, int fd);
   expipe_pkg::rob_idx_t rob_idx = tb_len5_get_commit_idx();
 
   // Register new committing instruction
@@ -136,15 +136,15 @@ endfunction: tb_len5_update_commit
 // Get stats from LEN5
 function len5_data_t tb_len5_get_data(longint unsigned mem_instr, longint unsigned mem_read, longint unsigned mem_write);
   len5_data_t data;
-  data.cpu_cycles = unsigned'(`TOP.u_backend.u_csrs.mcycle);
-  data.retired_instr = unsigned'(`TOP.u_backend.u_csrs.minstret);
-  data.retired_jump = unsigned'(u_datapath.u_backend.u_csrs.hpmcounter3);
-  data.retired_branch = unsigned'(u_datapath.u_backend.u_csrs.hpmcounter4);
-  data.retired_load = unsigned'(u_datapath.u_backend.u_csrs.hpmcounter5);
-  data.retired_store = unsigned'(u_datapath.u_backend.u_csrs.hpmcounter6);
-  data.instr_req = mem_instr;
-  data.read_req = mem_read;
-  data.write_req = mem_write;
+  data.cpu_cycles <= unsigned'(`TOP.u_backend.u_csrs.mcycle);
+  data.retired_instr <= unsigned'(`TOP.u_backend.u_csrs.minstret);
+  data.retired_jump <= unsigned'(u_datapath.u_backend.u_csrs.hpmcounter3);
+  data.retired_branch <= unsigned'(u_datapath.u_backend.u_csrs.hpmcounter4);
+  data.retired_load <= unsigned'(u_datapath.u_backend.u_csrs.hpmcounter5);
+  data.retired_store <= unsigned'(u_datapath.u_backend.u_csrs.hpmcounter6);
+  data.instr_req <= mem_instr;
+  data.read_req <= mem_read;
+  data.write_req <= mem_write;
   return data;
 endfunction: tb_len5_get_data
 
@@ -161,8 +161,8 @@ function void tb_len5_print_report(len5_data_t data);
   if (!LEN5_CSR_HPMCOUNTERS_EN) begin
     $display(" ## NOTE: extra performance counters not available since 'LEN5_CSR_HPMCOUNTERS_EN' is not defined");
   end else begin
-    tot_jump_branch = data.retired_jump + data.retired_branch;
-    tot_load_store = data.retired_load + data.retired_store;
+    tot_jump_branch <= data.retired_jump + data.retired_branch;
+    tot_load_store <= data.retired_load + data.retired_store;
     $display("  # retired jump/branch instructions:      %6d (%0.1f%%)", tot_jump_branch, real'(tot_jump_branch) * 100.0 / data.retired_instr);
     $display("    - jumps:                               %6d (%0.1f%%)", data.retired_jump, real'(data.retired_jump) * 100.0 / tot_jump_branch);
     $display("    - branches:                            %6d (%0.1f%%)", data.retired_branch, real'(data.retired_branch) * 100.0 / tot_jump_branch);
@@ -170,7 +170,7 @@ function void tb_len5_print_report(len5_data_t data);
     $display("    - loads:                               %6d (%0.1f%%)", data.retired_load, real'(data.retired_load) * 100.0 / tot_load_store);
     $display("    - stores:                              %6d (%0.1f%%)", data.retired_store, real'(data.retired_store) * 100.0 / tot_load_store);
   end
-  tot_mem = data.instr_req + data.read_req + data.write_req;
+  tot_mem <= data.instr_req + data.read_req + data.write_req;
   $display(" ## memory requests:                       %6d", tot_mem);
   $display("    - instruction fetches:                 %6d (%0.1f%%)", data.instr_req, real'(data.instr_req) * 100.0 / tot_mem);
   $display("    - read requests:                       %6d (%0.1f%%)", data.read_req, real'(data.read_req) * 100.0 / tot_mem);

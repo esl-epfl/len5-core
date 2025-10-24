@@ -52,10 +52,6 @@ package len5_config_pkg;
   // NOTE: CURRENTLY UNSUPPORTED
   localparam bit LEN5_A_EN = 1'b0;  // atomic instructions
 
-  // Enable dummy accelerator support
-  // --------------------------------
-  localparam bit LEN5_DUMMY_COPR_EN = 1'b0;
-
   // Enable store-to-load forwarding
   // -------------------------------
   // This switch instantiates a small cache with the same size as store buffer
@@ -69,8 +65,8 @@ package len5_config_pkg;
   localparam bit LEN5_STORE_LOAD_FWD_EN = 1'b1;
 
   // Maximum number of execution units :
-  // load buffer, store buffer, branch unit, ALU, MULT, DIV, FPU, DUMMY_ACC
-  localparam int unsigned MAX_EU_N = 32'd8;
+  // load buffer, store buffer, branch unit, ALU, MULT, DIV, FPU
+  localparam int unsigned MAX_EU_N = 32'd7;
 
   // Memory
   // ------
@@ -155,12 +151,6 @@ package len5_config_pkg;
   localparam bit FPU_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
   localparam int unsigned FPU_PIPE_DEPTH = 32'd4;  // pipeline stages
   localparam bit FPU_SPILL_SKIP = 1'b1;  // skip input registers
-
-  // DUMMY COPROCESSOR UNIT
-  localparam int unsigned DUMMY_COPR_RS_DEPTH = 32'd4;
-  localparam bit DUMMY_COPR_RR_ARBITER = 1'b1;  // round-robin arbiter for the reservation station
-  localparam int unsigned DUMMY_COPR_MAX_LATENCY = 32'd128; // maximum latency for iterative instructions
-  localparam int unsigned DUMMY_COPR_MAX_PIPE_DEPTH = 32'd301; // maximum pipeline depth for pipelined instructions
 
   // BRANCH UNIT
   localparam int unsigned BU_RS_DEPTH = 32'd4;

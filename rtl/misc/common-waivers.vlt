@@ -31,7 +31,6 @@ lint_off -rule UNUSED -file "*/spill_cell_flush.sv" -match "Signal is not used: 
 lint_off -rule UNUSED -file "*/spill_cell_flush.sv" -match "Signal is not used: 'rst_ni'"
 lint_off -rule UNUSED -file "*/spill_cell_flush.sv" -match "Signal is not used: 'flush_i'"
 
-// Warning due to unused pin
-lint_off -rule PINCONNECTEMPTY -file "*/fifo_comb_ready.sv" -match "Cell pin connected by name with empty reference: 'tc_o'"
-lint_off -rule PINCONNECTEMPTY -file "*/fifo_nohs.sv" -match "Cell pin connected by name with empty reference: 'tc_o'"
-lint_off -rule PINCONNECTEMPTY -file "*/fifo.sv" -match "Cell pin connected by name with empty reference: 'tc_o'"
+// Warning due to unused output pins
+lint_off -rule PINCONNECTEMPTY -file "*/fifo_nohs.sv" -match "Instance pin connected by name with empty reference: '*_o'"
+lint_off -rule PINCONNECTEMPTY -file "*/fifo.sv" -match "Instance pin connected by name with empty reference: '*_o'"

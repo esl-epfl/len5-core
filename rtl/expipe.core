@@ -42,8 +42,6 @@ filesets:
     depend:
       - polito:len5:packages
       - polito:len5:fpu
-      - polito:len5:dummy_acc_top
-      - polito:len5:dummy-coproc
       - pulp-platform.org::common_cells
     files:
       - expipe/exec-units/alu_unit.sv

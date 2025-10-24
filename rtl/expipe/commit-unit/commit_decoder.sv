@@ -58,7 +58,6 @@ module commit_decoder (
         MUL, MULH, MULHSU, MULHU, MULW,
         REM, REMU, REMUW, REMW,
         DIV, DIVU, DIVUW, DIVW,
-        XDUMMY_ITERATIVE, XDUMMY_PIPE,
         LUI, AUIPC:
         comm_type = COMM_TYPE_INT_RF;
 

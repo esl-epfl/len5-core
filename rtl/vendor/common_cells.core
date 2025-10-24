@@ -93,7 +93,13 @@ filesets:
       - pulp-common-cells/src/mem_to_banks.sv
     file_type: systemVerilogSource
 
+  verilator-waivers:
+    files:
+      - misc/pulp-common-cells-waivers.vlt
+    file_type: vlt
+
 targets:
   default:
     filesets: 
       - "!target_format ? (rtl-vendor)"
+      - tool_verilator ? (verilator-waivers)

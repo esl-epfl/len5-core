@@ -1614,35 +1614,6 @@ module issue_decoder (
         end
       end
 
-      // DUMMY COPR
-      XDUMMY_ITERATIVE: begin
-        if (LEN5_DUMMY_COPR_EN != 1'b0) begin
-          issue_type  = ISSUE_TYPE_INT;  // int RF destination
-          assigned_eu = EU_DUMMY_COPR;
-          eu_ctl.copr = DUMMY_ITERATIVE;
-          mem_crit    = 1'b0;
-          rs1_sel     = RS1_SEL_INT;
-          rs2_sel     = RS2_SEL_IMM;
-        end else begin
-          issue_type    = ISSUE_TYPE_EXCEPT;
-          skip_eu       = 1'b1;
-          opcode_except = 1'b1;
-        end
-      end
-      XDUMMY_PIPE: begin
-        if (LEN5_DUMMY_COPR_EN != 1'b0) begin
-          issue_type  = ISSUE_TYPE_INT;
-          assigned_eu = EU_DUMMY_COPR;
-          eu_ctl.copr = DUMMY_PIPELINE;
-          mem_crit    = 1'b0;
-          rs1_sel     = RS1_SEL_INT;
-          rs2_sel     = RS2_SEL_IMM;
-        end else begin
-          issue_type    = ISSUE_TYPE_EXCEPT;
-          skip_eu       = 1'b1;
-          opcode_except = 1'b1;
-        end
-      end
       // Unsupported instruction
       default: begin
         issue_type    = ISSUE_TYPE_EXCEPT;

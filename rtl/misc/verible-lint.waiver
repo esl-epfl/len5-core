@@ -33,7 +33,3 @@ waive --rule=forbid-line-continuations --location="../../../rtl/vendor/pulp-comm
 waive --rule=interface-name-style --location="../../../rtl/vendor/pulp-common-cells"
 waive --rule=typedef-structs-unions --location="../../../rtl/vendor/pulp-common-cells"
 waive --rule=explicit-parameter-storage-type --location="../../../rtl/vendor/pulp-common-cells"
-
-# Dummy accelerator
-waive --rule=parameter-name-style --location="../../../rtl/vendor/dummy_accelerator"
-waive --rule=struct-union-name-style --location="../../../rtl/vendor/dummy_accelerator"

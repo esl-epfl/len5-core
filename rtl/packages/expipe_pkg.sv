@@ -41,10 +41,9 @@ package expipe_pkg;
   localparam int unsigned MULT_EU_N = (LEN5_M_EN) ? 1 : 0;  // MULT
   localparam int unsigned DIV_EU_N = (LEN5_DIV_EN) ? 1 : 0;  // DIV, split from MUL
   localparam int unsigned FP_EU_N = (LEN5_D_EN | LEN5_F_EN) ? 1 : 0;  // FPU
-  localparam int unsigned DUMMY_COPR_EU_N = (LEN5_DUMMY_COPR_EN) ? 1 : 0;  // dummy_copr
 
   // Total number of execution units
-  localparam int unsigned EU_N = BASE_EU_N + MULT_EU_N + DIV_EU_N + FP_EU_N + DUMMY_COPR_EU_N;
+  localparam int unsigned EU_N = BASE_EU_N + MULT_EU_N + DIV_EU_N + FP_EU_N;
 
   // RESERVATION STATIONS
   // --------------------
@@ -64,8 +63,6 @@ package expipe_pkg;
 
   // FPU
   localparam int unsigned FPU_CTL_LEN = 6;  // floating point multiplier operation control
-
-  localparam int unsigned DUMMY_ACC_CTL_LEN = 1;  // dummy accelerator operation control
 
   // OPERANDS ONLY
   localparam int unsigned OP_ONLY_CTL_LEN = 2;
@@ -222,12 +219,6 @@ package expipe_pkg;
     FPU_D2L_U      //1010 1 1
   } fpu_ctl_t;
 
-  // Dummy coprocessor unit control
-  typedef enum logic [MAX_EU_CTL_LEN-1:0] {
-    DUMMY_PIPELINE,
-    DUMMY_ITERATIVE
-  } dummy_copr_ctl_t;
-
   // Branch unit control
   typedef enum logic [MAX_EU_CTL_LEN-1:0] {
     BU_BEQ  = 'h0,
@@ -261,7 +252,6 @@ package expipe_pkg;
     branch_ctl_t               bu;
     ldst_width_t               lsu;
     fpu_ctl_t                  fpu;
-    dummy_copr_ctl_t           copr;
     logic [MAX_EU_CTL_LEN-1:0] raw;
   } eu_ctl_t;
 
@@ -305,8 +295,7 @@ MAX_EU_N
     EU_INT_ALU,
     EU_INT_MULT,
     EU_INT_DIV,
-    EU_FPU,
-    EU_DUMMY_COPR
+    EU_FPU
   } issue_eu_t;
 
   // Operand source

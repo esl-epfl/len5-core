@@ -39,14 +39,8 @@ lint_off -rule UNUSED -file "*/memory_bare_emu.sv" -match "Signal is not used: '
 lint_off -rule UNUSED -file "*/memory_bare_emu.sv" -match "Signal is not used: 'data_store_pipe_en'"
 
 // Pins not used
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'instr_we_o'"
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'data_load_we_o'"
+lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Instance pin connected by name with empty reference: '*_o'"
+lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Instance pin connected by name with empty reference: 'irq_i'"
+lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Instance pin connected by name with empty reference: 'fetch_enable_i'"
 
-// Pins not used, but will be used in future versions
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'irq_i'"
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'irq_ack_o'"
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'irq_id_o'"
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'fetch_enable_i'"
-lint_off -rule PINCONNECTEMPTY -file "*/tb_bare.sv" -match "Cell pin connected by name with empty reference: 'core_sleep_o'"
-
-lint_off -rule UNOPTFLAT -file "*/tb_bare.sv" -match "Signal unoptimizable: Feedback to clock or circular logic: 'tb_bare.dp2mem_flush'"
+lint_off -rule UNOPTFLAT -file "*/tb_bare.sv" -match "Signal unoptimizable: Circular combinational logic: 'tb_bare.dp2mem_flush'"
