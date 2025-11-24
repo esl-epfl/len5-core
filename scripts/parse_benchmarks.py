@@ -261,7 +261,7 @@ def print_table_to_file_csv(table, path):
     with open(output_file, "w") as file:
         file.write(f"Benchmark,Status,Instructions,Cycles,IPC,Jumps,Branches,Branch/Jump Instructions,Loads,Stores,Load/Store Instructions,Instruction fetches,Write Requests,Read Requests,Memory Requests\n")
         for benchmark, results in table.items():
-            file.write(f"{benchmark},")
+            file.write(f"{benchmark[:-4]},")
             file.write(f"{results['status']},")
             file.write(f"{results['instructions']},")
             file.write(f"{results['cycles']},")
