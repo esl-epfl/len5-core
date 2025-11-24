@@ -38,8 +38,9 @@ EMBENCH_TESTS	:= $(filter-out src, $(EMBENCH_TESTS))
 BENCHMARK_DIR_NAME=$(basename $BENCHMARK_DIR_PATH)
 #run benchmarks parallel
 PARALLEL_DIR    := sw/benchmarks/${SUITE}/src/
+SKIP_TESTS 		:= src minver sglib-combined
 PARALLEL_TESTS	?= $(shell find $(PARALLEL_DIR) -type d -exec basename {} \;)
-PARALLEL_TESTS	:= $(filter-out src, $(PARALLEL_TESTS))
+PARALLEL_TESTS	:= $(filter-out $(SKIP_TESTS), $(PARALLEL_TESTS))
 PARALLEL_JOBS   := $(addprefix job_, ${PARALLEL_TESTS})
 # ---------
 # RTL simulation files

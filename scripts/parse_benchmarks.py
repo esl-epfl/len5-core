@@ -317,7 +317,7 @@ if __name__ == "__main__":
             output_log = output_log[start_report:]
             stats = update_table(stats, i, output_log)
         print(f"{i[:-4]}: {stats[i]['status']} (IPC={stats[i]['ipc'] : 2f})")
-        if not stats[i]["status"]:
+        if stats[i]["status"]:
             correctly_ex += 1
     
     print(f"Correctly executed testbenches {correctly_ex} out of {len(stats)}.")
