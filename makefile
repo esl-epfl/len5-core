@@ -38,7 +38,7 @@ EMBENCH_TESTS	:= $(filter-out src, $(EMBENCH_TESTS))
 BENCHMARK_DIR_NAME=$(basename $BENCHMARK_DIR_PATH)
 #run benchmarks parallel
 PARALLEL_DIR    := sw/benchmarks/${SUITE}/src/
-SKIP_TESTS 		:= src minver sglib-combined
+SKIP_TESTS 		:= src minver sglib-combined # TODO: remove them from the list once they work
 PARALLEL_TESTS	?= $(shell find $(PARALLEL_DIR) -type d -exec basename {} \;)
 PARALLEL_TESTS	:= $(filter-out $(SKIP_TESTS), $(PARALLEL_TESTS))
 PARALLEL_JOBS   := $(addprefix job_, ${PARALLEL_TESTS})
@@ -122,6 +122,8 @@ questasim-sim: | app .check-fusesoc $(BUILD_DIR)/
 # --------------------
 .PHONY: run-benchmarks
 run-benchmarks: $(BUILD_DIR)/.verilator.lock $(BUILD_DIR)/$(SUITE)/logs/compiler/ $(BUILD_DIR)/$(SUITE)/logs/sim/ $(PARALLEL_JOBS)
+	@echo "## Getting the results from benchmarks"
+	python3 scripts/parse_benchmarks.py -s $(SUITE) -p $(BUILD_DIR)/$(SUITE)
 	@echo "$@ done."
 
 $(PARALLEL_JOBS): job_%: $(BUILD_DIR)/.verilator.lock $(BUILD_DIR)/$(SUITE)/logs/compiler/ $(BUILD_DIR)/$(SUITE)/logs/sim/
@@ -130,17 +132,13 @@ $(PARALLEL_JOBS): job_%: $(BUILD_DIR)/.verilator.lock $(BUILD_DIR)/$(SUITE)/logs
 .PHONY: run
 run: $(BUILD_DIR)/$(SUITE)/run/$(BENCHMARK)/main.hex
 	@echo "## Starting the simulation of $(SUITE) benchmark $(BENCHMARK)"
-	@$(MAKE) verilator-opt FIRMWARE=$< MAX_CYCLES=$(MAX_CYCLES) > $(BUILD_DIR)/$(SUITE)/logs/sim/$(BENCHMARK).log 2>&1
+	@$(MAKE) verilator-opt FIRMWARE=$< MAX_CYCLES=10000000 > $(BUILD_DIR)/$(SUITE)/logs/sim/$(BENCHMARK).log 2>&1
 	@echo "## End of the simulation of $(SUITE) benchmark $(BENCHMARK)"
 
 $(BUILD_DIR)/$(SUITE)/run/$(BENCHMARK)/main.hex:
 	@echo "## Building suite $(SUITE) benchmark $(BENCHMARK)"
 	@$(MAKE) -BC sw benchmark SUITE=$(SUITE) BUILD_DIR=$(SOFTWARE_DIR) BENCHMARK=$(BENCHMARK) > $(BUILD_DIR)/$(SUITE)/logs/compiler/$(BENCHMARK).log 2>&1
 
-.PHONY: benchmark-stats
-benchmark-stats: $(BUILD_DIR)/$(SUITE)/logs/compiler/ $(BUILD_DIR)/$(SUITE)/logs/sim/
-	@echo "## Getting the results from benchmarks"
-	@python3 scripts/parse_benchmarks.py -s $(SUITE) -p $(BUILD_DIR)/$(SUITE)
 # Software
 # --------
 # Application from 'sw/applications'

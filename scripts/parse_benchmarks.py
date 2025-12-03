@@ -310,14 +310,14 @@ if __name__ == "__main__":
     #get benchmarks
     benchmarks = get_benchmarks(benchmarks_dir)
     correctly_ex = 0
-    for i in benchmarks:
-        with open(os.path.join(benchmarks_dir, i)) as f:
+    for i, b in enumerate(benchmarks):
+        with open(os.path.join(benchmarks_dir, b)) as f:
             output_log = f.read()
             start_report = get_report_start(output_log)
             output_log = output_log[start_report:]
-            stats = update_table(stats, i, output_log)
-        print(f"{i[:-4]}: {stats[i]['status']} (IPC={stats[i]['ipc'] : 2f})")
-        if stats[i]["status"]:
+            stats = update_table(stats, b, output_log)
+        print(f"- {i:2d}) {b[:-4]}: {stats[b]['status']} (IPC={stats[b]['ipc'] : 2f})")
+        if stats[b]["status"]:
             correctly_ex += 1
     
     print(f"Correctly executed testbenches {correctly_ex} out of {len(stats)}.")
