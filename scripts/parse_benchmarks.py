@@ -316,7 +316,7 @@ if __name__ == "__main__":
             start_report = get_report_start(output_log)
             output_log = output_log[start_report:]
             stats = update_table(stats, b, output_log)
-        print(f"- {i:2d}) {b[:-4]}: {stats[b]['status']} (IPC={stats[b]['ipc'] : 2f})")
+        print(f"  {i:2d}) {b[:-4]}: {stats[b]['status']} (IPC={stats[b]['ipc'] : 2f})")
         if stats[b]["status"]:
             correctly_ex += 1
     
