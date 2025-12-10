@@ -26,14 +26,15 @@ module ras #(
   input logic rst_ni,
   input logic flush_i,
 
-  // LIFO control
-  input  logic                      push_i,          // push a new return address
-  input  logic                      pop_i,           // pop the last return address
-  input  logic                      call_confirm_i,  // confirm a resolved call
-  input  logic                      ret_confirm_i,   // confirm a resolved return
-  input  logic [len5_pkg::ALEN-1:0] ret_addr_i,      // new return address
-  output logic                      valid_o,         // return address valid
-  output logic [len5_pkg::ALEN-1:0] ret_addr_o       // last return address
+  // Call/return update interface
+  input  logic                      push_i,                  // push a new return address
+  input  logic                      pop_i,                   // pop the last return address
+  input  logic [len5_pkg::ALEN-1:0] link_addr_i,               // new return address
+  output logic                      valid_o,                  // return address valid
+  output logic [len5_pkg::ALEN-1:0] ret_addr_o,               // last return address
+  input  logic                      call_confirm_i,          // confirm a resolved call
+  input  logic                      ret_confirm_i,           // confirm a resolved return
+  input  logic [len5_pkg::ALEN-1:0] res_link_addr_i      // link address from Branch Unit
 );
 
   import len5_pkg::*;
@@ -42,9 +43,10 @@ module ras #(
   // INTERNAL SIGNALS
   // ----------------
   // Return addresses
-  logic [DEPTH-1:0][ALEN-1:0] ras_addr;
-  logic [DEPTH-1:0]           ras_valid;
-  logic [DEPTH-1:0]           ras_confirmed;
+  logic [DEPTH-1:0]           ras_valid_q;
+  logic [DEPTH-1:0][ALEN-1:0] ras_addr_q;
+  logic [DEPTH-1:0]           ras_valid_confirmed_q;
+  logic [DEPTH-1:0][ALEN-1:0] ras_addr_confirmed_q;
 
   // RAS pointers
   logic [IdxW-1:0] last_idx, new_idx, confirmed_last_idx, confirmed_new_idx;
@@ -58,23 +60,24 @@ module ras #(
   // LIFO speculative entries update
   always_ff @(posedge clk_i or negedge rst_ni) begin : lifo_upd
     if (!rst_ni) begin
-      ras_valid <= '0;
+      ras_valid_q <= '0;
     end else if (flush_i) begin
-      ras_valid <= ras_confirmed;
+      ras_valid_q <= ras_valid_confirmed_q;
+      ras_addr_q  <= ras_addr_confirmed_q;
     end else begin
       if (push_i && pop_i) begin
-        ras_addr[last_idx] <= ret_addr_i;
+        ras_addr_q[last_idx] <= link_addr_i;
       end else if (push_i && ras_full) begin
         // Start over
         for (int unsigned i = 0; i < DEPTH - 1; i++) begin
-          ras_addr[i] <= ras_addr[i+1];
+          ras_addr_q[i] <= ras_addr_q[i+1];
         end
-        ras_addr[DEPTH-1] <= ret_addr_i;
+        ras_addr_q[DEPTH-1] <= link_addr_i;
       end else if (push_i) begin
-        ras_addr[new_idx]  <= ret_addr_i;
-        ras_valid[new_idx] <= 1'b1;
+        ras_addr_q[new_idx]  <= link_addr_i;
+        ras_valid_q[new_idx] <= 1'b1;
       end else if (pop_i) begin
-        ras_valid[last_idx] <= 1'b0;
+        ras_valid_q[last_idx] <= 1'b0;
       end
     end
   end
@@ -82,22 +85,23 @@ module ras #(
   // LIFO confirmed entries update
   always_ff @(posedge clk_i or negedge rst_ni) begin : lifo_spec
     if (!rst_ni) begin
-      ras_confirmed <= '0;
+      ras_valid_confirmed_q <= '0;
     end else if (push_i && !pop_i && ras_full) begin
       // Start over
-      ras_confirmed <= {1'b0, ras_confirmed[DEPTH-1:1]};
+      ras_valid_confirmed_q <= {1'b0, ras_valid_confirmed_q[DEPTH-1:1]};
     end else if (call_confirm_i ^ ret_confirm_i) begin
       if (call_confirm_i && !ras_confirmed_full) begin
-        ras_confirmed[confirmed_new_idx] <= 1'b1;
+        ras_valid_confirmed_q[confirmed_new_idx] <= 1'b1;
+        ras_addr_confirmed_q[confirmed_new_idx]  <= res_link_addr_i;
       end else if (ret_confirm_i) begin
-        ras_confirmed[confirmed_last_idx] <= 1'b0;
+        ras_valid_confirmed_q[confirmed_last_idx] <= 1'b0;
       end
     end
   end
 
   // Full
-  assign ras_full           = &ras_valid;
-  assign ras_confirmed_full = &ras_confirmed;
+  assign ras_full           = &ras_valid_q;
+  assign ras_confirmed_full = &ras_valid_confirmed_q;
 
   // RAS indexes
   // -----------
@@ -105,7 +109,7 @@ module ras #(
   prio_enc #(
     .N(DEPTH)
   ) prio_enc_last (
-    .lines_i(ras_valid),
+    .lines_i(ras_valid_q),
     .enc_o  (last_idx),
     .valid_o(last_valid)
   );
@@ -115,7 +119,7 @@ module ras #(
     .N  (DEPTH),
     .INV(1'b1)
   ) prio_enc_new (
-    .lines_i(~ras_valid),
+    .lines_i(~ras_valid_q),
     .enc_o  (new_idx),
     .valid_o()             // not used
   );
@@ -124,7 +128,7 @@ module ras #(
   prio_enc #(
     .N(DEPTH)
   ) prio_enc_confirmed (
-    .lines_i(ras_confirmed),
+    .lines_i(ras_valid_confirmed_q),
     .enc_o  (confirmed_last_idx),
     .valid_o()                     // not used
   );
@@ -134,7 +138,7 @@ module ras #(
     .N  (DEPTH),
     .INV(1'b1)
   ) prio_enc_spec (
-    .lines_i(~ras_confirmed),
+    .lines_i(~ras_valid_confirmed_q),
     .enc_o  (confirmed_new_idx),
     .valid_o()                    // not used
   );
@@ -143,5 +147,5 @@ module ras #(
   // OUTPUT GENERATION
   // -----------------
   assign valid_o    = last_valid;
-  assign ret_addr_o = ras_addr[last_idx];
+  assign ret_addr_o = ras_addr_q[last_idx];
 endmodule

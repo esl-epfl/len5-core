@@ -20,12 +20,13 @@ module branch_unit #(
   input logic flush_i,
 
   // Frontend
-  input  logic                   fe_pcgen_ready_i,
-  output logic                   fe_bpu_valid_o,
-  output logic                   fe_pcgen_valid_o,
-  output fetch_pkg::resolution_t fe_res_o,
-  output logic                   fe_call_confirm_o,
-  output logic                   fe_ret_confirm_o,
+  input  logic                      fe_pcgen_ready_i,
+  output logic                      fe_bpu_valid_o,
+  output logic                      fe_pcgen_valid_o,
+  output fetch_pkg::resolution_t    fe_res_o,
+  output logic                      fe_call_confirm_o,
+  output logic                      fe_ret_confirm_o,
+  output logic [len5_pkg::ALEN-1:0] fe_link_addr_o,
 
   // Issue Stage
   input  logic                                         issue_valid_i,
@@ -74,7 +75,7 @@ module branch_unit #(
   logic                   wrong_taken;
   logic                   wrong_target;
   logic                   res_mispredicted;
-  logic        [XLEN-1:0] link_addr;
+  logic        [XLEN-1:0] link_addr, link_addr_q;
   logic        [XLEN-1:0] res_target;
   logic        [XLEN-1:0] adder_op;
   logic        [XLEN-1:0] adder_out;
@@ -200,6 +201,7 @@ module branch_unit #(
       res_q.mispredict <= res_mispredicted;
       call_confirm_q   <= call_confirm_d;
       ret_confirm_q    <= ret_confirm_d;
+      link_addr_q      <= link_addr;
     end
   end
 
@@ -270,4 +272,5 @@ module branch_unit #(
   assign fe_res_o          = res_q;
   assign fe_call_confirm_o = call_confirm_q & cu_confirm_en;
   assign fe_ret_confirm_o  = ret_confirm_q & cu_confirm_en;
+  assign fe_link_addr_o    = link_addr_q;
 endmodule

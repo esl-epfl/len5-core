@@ -44,12 +44,13 @@ module fetch_stage #(
   output fetch_pkg::except_code_t issue_except_code_o,
 
   // From branch unit
-  output logic                   bu_pcgen_ready_o,
-  input  logic                   bu_bpu_valid_i,
-  input  logic                   bu_pcgen_valid_i,
-  input  fetch_pkg::resolution_t bu_res_i,
-  input  logic                   bu_call_confirm_i,
-  input  logic                   bu_ret_confirm_i,
+  output logic                      bu_pcgen_ready_o,
+  input  logic                      bu_bpu_valid_i,
+  input  logic                      bu_pcgen_valid_i,
+  input  fetch_pkg::resolution_t    bu_res_i,
+  input  logic                      bu_call_confirm_i,
+  input  logic                      bu_ret_confirm_i,
+  input  logic [len5_pkg::ALEN-1:0] bu_link_addr_i,
 
   // From commit unit
   input logic                      comm_except_raised_i,
@@ -175,6 +176,7 @@ module fetch_stage #(
     .early_jump_target_i(early_jump_target),
     .call_confirm_i     (bu_call_confirm_i),
     .ret_confirm_i      (bu_ret_confirm_i),
+    .res_link_addr_i    (bu_link_addr_i),
     .mem_if_pred_i      (mem_if_pred),
     .issue_pred_o       (issue_pred_o),
     .early_jump_valid_o (early_jump_valid),
