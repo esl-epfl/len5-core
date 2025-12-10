@@ -25,6 +25,7 @@ module early_jump_unit (
   input  logic                   [len5_pkg::XLEN-1:0] early_jump_target_i,
   input  logic                                        call_confirm_i,
   input  logic                                        ret_confirm_i,
+  input  logic [len5_pkg::ALEN-1:0]                   res_link_addr_i,
   output fetch_pkg::prediction_t                      issue_pred_o,
   output logic                                        early_jump_valid_o,
   output logic                                        mem_flush_o,
@@ -169,11 +170,12 @@ module early_jump_unit (
     .flush_i       (flush_i),
     .push_i        (ras_push),
     .pop_i         (ras_pop),
+    .link_addr_i    (link_addr),
+    .valid_o       (ras_addr_valid),
+    .ret_addr_o    (ras_addr),
     .call_confirm_i(call_confirm_i),
     .ret_confirm_i (ret_confirm_i),
-    .ret_addr_i    (link_addr),
-    .valid_o       (ras_addr_valid),
-    .ret_addr_o    (ras_addr)
+    .res_link_addr_i   (res_link_addr_i)
   );
 
   // Output network
