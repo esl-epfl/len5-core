@@ -265,7 +265,7 @@ def print_table_to_file_csv(table, path):
             file.write(f"{results['status']},")
             file.write(f"{results['instructions']},")
             file.write(f"{results['cycles']},")
-            file.write(f"{results['ipc'] : .2f},")
+            file.write(f"{results['ipc']:0.2f},")
             file.write(f"{results['jumps']},")
             file.write(f"{results['branches']},")
             file.write(f"{results['branch/jump']},")
