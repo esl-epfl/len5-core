@@ -33,7 +33,7 @@
 #ifndef true
 #define true 1
 #define false 0
-typedef uint8_t bool;
+typedef uint8_t bool_t;
 #endif
 
 #define Var(name, value, type) type name = value
@@ -62,13 +62,13 @@ typedef struct
   int index;
 } Test;
 
-bool
+bool_t
 TestCompare (Test item1, Test item2)
 {
   return (item1.value < item2.value);
 }
 
-typedef bool (*Comparison) (Test, Test);
+typedef bool_t (*Comparison) (Test, Test);
 
 
 

@@ -12,9 +12,13 @@ Both low-level software and code examples are included. In particular:
 ## Instructions
 
 ### Prerequisites
-A RISC-V toolchain supporting the `rv64imfdzicsr` instruction set architecture (ISA) and the `lp64d` application binary interface (ABI) shall be available in the `PATH`. In particular, LEN5 was tested with GCC version 15.1.0, configured with:
+A RISC-V toolchain supporting the `rv64imfdzicsr` instruction set architecture (ISA) and the `lp64d` application binary interface (ABI) shall be available in the `PATH`. In particular, LEN5 was tested with GCC version 15.1.0, revision [2025.11.04](https://github.com/riscv-collab/riscv-gnu-toolchain/tree/2025.11.04), configured with:
 ```bash
-./configure --prefix=${INSTALL_DIR}$ --with-newlib --with-abi=lp64d --with-arch=rv64imfdzicsr --with-isa-spec=2.2
+git clone https://github.com/riscv-collab/riscv-gnu-toolchain.git
+cd riscv-gnu-toolchain
+git checkout 2025.11.04
+./configure --prefix=${INSTALL_DIR}$ --with-abi=lp64d --with-arch=rv64imfdzicsr --with-isa-spec=2.2
+make -j$(nproc)
 ```
 
 ### Test programs
